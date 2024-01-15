@@ -44,7 +44,6 @@ async function bootstrap() {
     await nestApp.listen()
   }
   catch (error) {
-    // eslint-disable-next-line no-console
     console.log(error)
     app.quit()
   }

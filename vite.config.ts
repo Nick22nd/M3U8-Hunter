@@ -2,12 +2,20 @@ import { join } from 'node:path'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { VitePluginDoubleshot } from 'vite-plugin-doubleshot'
+import UnoCSS from 'unocss/vite'
 
 // https://vitejs.dev/config/
 export default defineConfig({
   root: join(__dirname, 'src/render'),
   plugins: [
-    vue(),
+    vue({
+      template: {
+        compilerOptions: {
+          // ...
+          isCustomElement: tag => tag.startsWith('webview'),
+        },
+      },
+    }),
     VitePluginDoubleshot({
       type: 'electron',
       main: 'dist/main/index.js',
@@ -24,6 +32,7 @@ export default defineConfig({
         },
       },
     }),
+    UnoCSS(),
   ],
   resolve: {
     alias: {

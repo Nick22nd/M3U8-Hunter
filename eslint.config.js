@@ -13,5 +13,8 @@ module.exports = lightwing(
       'js_test',
       'local-data',
     ],
+    rules: {
+      'no-console': 'off', // 允许使用 console
+    },
   },
 )
