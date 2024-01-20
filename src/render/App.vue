@@ -33,6 +33,14 @@ import SideBar from './components/SideBar.vue'
 body {
   margin: 0;
   padding: 0;
+  --background-dark-color: #0d1117;
+  --background-light: #fff;
+  background-color: var(--background-light);
+}
+body.dark {
+  --background-dark-color: #0d1117;
+  --background-light: #fff;
+  background-color: var(--background-dark-color);
 }
 
 .logo {
