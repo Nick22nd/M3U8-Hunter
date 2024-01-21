@@ -15,6 +15,8 @@ module.exports = lightwing(
     ],
     rules: {
       'no-console': 'off', // 允许使用 console
+      'no-unused-vars': 'warn', // 允许声明未使用变量
+      'unused-imports/no-unused-vars': 'warn',
     },
   },
 )
