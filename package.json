@@ -37,7 +37,7 @@
     "vue": "^3.4.1",
     "vue-tsc": "^1.8.27",
     "unocss": "^0.58.3",
-    "@unocss/preset-uno": "^0.58.3",
+    "@unocss/preset-uno": "^0.58.5",
     "vue-router": "4",
     "download": "^8.0.0",
     "got": "^14.0.0",
