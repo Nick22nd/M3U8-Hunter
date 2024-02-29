@@ -18,6 +18,11 @@ const myRoutes = [
     name: 'WebView',
     icon: PanelTop,
   },
+  {
+    path: '/tasks',
+    name: 'Tasks',
+    icon: PersonStanding,
+  }
 ]
 const themes = {
   icon: {
@@ -25,7 +30,8 @@ const themes = {
     light: Sun,
   },
 }
-const theme = ref('dark')
+type themeType = 'dark' | 'light'
+const theme = ref<themeType>('dark')
 function handleOpen(key: string, keyPath: string[]) {
   console.log(key, keyPath)
 }

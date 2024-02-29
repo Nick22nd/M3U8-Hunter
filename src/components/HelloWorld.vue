@@ -8,7 +8,7 @@ const props = defineProps({
   },
 })
 
-const { sendMsg: sendMsgToMainProcess, onReplyMsg } = window.electron
+const { sendMsg: sendMsgToMainProcess } = window.electron
 
 const log = ref('')
 const msg = ref('')
@@ -24,9 +24,9 @@ async function sendMsg() {
   }
 }
 
-onReplyMsg((msg: string) => {
-  log.value += `[main]: ${msg}  \n`
-})
+// onReplyMsg((msg: string) => {
+//   log.value += `[main]: ${msg}  \n`
+// })
 </script>
 
 <template>

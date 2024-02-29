@@ -1,4 +1,5 @@
 import { ipcRenderer, contextBridge } from 'electron'
+import { Message4Renderer } from '../../common/common.types'
 
 // --------- Expose some API to the Renderer process ---------
 contextBridge.exposeInMainWorld('ipcRenderer', withPrototype(ipcRenderer))
@@ -25,8 +26,8 @@ function withPrototype(obj: Record<string, any>) {
 contextBridge.exposeInMainWorld(
   'electron',
   {
-    sendMsg: (msg: string): Promise<string> => ipcRenderer.invoke('msg', msg),
-    onReplyMsg: (cb: (msg: string) => any) => ipcRenderer.on('reply-msg', (e, msg: string) => {
+    sendMsg: (msg: Message4Renderer): Promise<string> => ipcRenderer.invoke('msg', msg),
+    onReplyMsg: (cb: (msg: Message4Renderer) => any) => ipcRenderer.on('reply-msg', (e, msg: Message4Renderer) => {
       cb(msg)
     }),
   },
