@@ -14,10 +14,14 @@
       "DOM"
     ],
     "skipLibCheck": true,
-    "noEmit": true
+    "noEmit": true,
+    "types": [
+      "element-plus/global"
+    ]
   },
   "include": [
-    "src"
+    "src",
+    "common"
   ],
   "references": [
     {

@@ -10,7 +10,7 @@ interface Window {
   // expose in the `electron/preload/index.ts`
   ipcRenderer: import('electron').IpcRenderer,
   electron: {
-    sendMsg(msg: string): Promise<string>
-    onReplyMsg(cb: (msg: string) => any): void
+    sendMsg(msg: Message4Renderer): Promise<Message4Renderer>
+    onReplyMsg(cb: (msg: Message4Renderer) => any): void
   }
 }

@@ -9,7 +9,8 @@
   "include": [
     "vite.config.ts",
     "package.json",
-    "electron"
+    "electron",
+    "common"
   ],
   "path": {
     "@main/*": [

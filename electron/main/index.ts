@@ -2,6 +2,9 @@ import { app, BrowserWindow, shell, ipcMain } from 'electron'
 import { release } from 'node:os'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { appService } from '../lib/m3u8.app'
+import { Message4Renderer, MessageName } from '../../common/common.types'
+import electron from 'vite-plugin-electron'
 
 globalThis.__filename = fileURLToPath(import.meta.url)
 globalThis.__dirname = dirname(__filename)
@@ -87,7 +90,12 @@ async function createWindow() {
           url: details.url,
           headers: JSON.stringify(details.requestHeaders),
         }
-        win.webContents.send('reply-msg', { browserVideoItem: _item })
+        const req: Message4Renderer = {
+          data: { browserVideoItem: _item },
+          name: MessageName.findM3u8,
+          type: 'm3u8',
+        }
+        win.webContents.send('reply-msg', req)
         // mainWindow && mainWindow.webContents.send('message', { browserVideoItem: _item })
       }
 
@@ -100,9 +108,41 @@ async function createWindow() {
   // Test actively push message to the Electron-Renderer
   win.webContents.on('did-finish-load', () => {
     win?.webContents.send('main-process-message', new Date().toLocaleString() + ' m3u8-hunter')
-    ipcMain.handle('msg', (event, arg) => {
+    ipcMain.handle('msg', async (event, arg) => {
       console.log('from ipc msg:', arg)
-      win?.webContents.send('reply-msg', 'this is msg from webContents.send' + JSON.stringify(arg))
+      const { type, name, data } = arg
+      if (name === MessageName.getTasks) {
+        const taskList = await appService.getTasks()
+        // console.log('data getTasks', data, JSON.stringify(data))
+        const newMessage: Message4Renderer = {
+          type: 'm3u8',
+          name: MessageName.getTasks,
+          data: taskList,
+        }
+        win?.webContents.send('reply-msg', newMessage)
+        return
+      } else if (name === MessageName.downloadM3u8) {
+        // if (['m3u8', 'M3U8'].includes(data.type)) {
+        const _item = data
+        appService.downloadM3u8(_item)
+        // }
+      } else if (name === MessageName.deleteTask) {
+        console.log('deleteTask', data)
+        await appService.deleteTask(data)
+        const taskList = await appService.getTasks()
+        // console.log('data getTasks', data, JSON.stringify(data))
+        const newMessage: Message4Renderer = {
+          type: 'm3u8',
+          name: MessageName.getTasks,
+          data: taskList,
+        }
+        win?.webContents.send('reply-msg', newMessage)
+      } else if (name === MessageName.startTask) {
+        console.log('startTask', data)
+        data.headers = JSON.stringify(data.headers)
+        const _item = data
+        appService.downloadM3u8(_item)
+      }
     })
   })
 
