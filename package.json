@@ -28,7 +28,7 @@
     "@types/dplayer": "^1.25.5",
     "@vitejs/plugin-vue": "^5.0.1",
     "electron": "^28.1.0",
-    "electron-builder": "^24.9.1",
+    "electron-builder": "^24.12.0",
     "tree-kill": "^1.2.2",
     "typescript": "^5.3.3",
     "vite": "^5.0.10",
