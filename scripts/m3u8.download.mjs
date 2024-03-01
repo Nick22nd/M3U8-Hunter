@@ -27,7 +27,13 @@ async function downloadTS(task) {
     console.log('tsDir', tsDir)
     fs.mkdirSync(tsDir, { recursive: true })
   }
-
+  // download key file
+  if (parser.manifest.key) {
+    const url = `${baseURL}${parser.manifest.key.uri}`
+    await download(url, tsDir, {
+      headers: task.headers,
+    })
+  }
   for (const segment of segments) {
     const url = `${baseURL}${segment.uri}`
     // const name = segment.uri

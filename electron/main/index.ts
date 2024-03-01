@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 import { appService } from '../lib/m3u8.app'
 import { Message4Renderer, MessageName } from '../../common/common.types'
 import electron from 'vite-plugin-electron'
+import { downloadTS } from '../lib/m3u8.download'
 
 globalThis.__filename = fileURLToPath(import.meta.url)
 globalThis.__dirname = dirname(__filename)
@@ -139,9 +140,14 @@ async function createWindow() {
         win?.webContents.send('reply-msg', newMessage)
       } else if (name === MessageName.startTask) {
         console.log('startTask', data)
-        data.headers = JSON.stringify(data.headers)
-        const _item = data
-        appService.downloadM3u8(_item)
+        // data.headers = JSON.stringify(data.headers)
+        // const _item = data
+        try {
+          // await appService.downloadM3u8(_item)
+          await downloadTS(data)
+        } catch (error) {
+          console.log('error', error)
+        }
       }
     })
   })

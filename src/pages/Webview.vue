@@ -79,6 +79,9 @@ onMounted(() => {
   })
   const navigateEvent = (e: { url: string; }) => {
     url.value = e.url
+    const list = localStorage.getItem('lastUrls') || '[]'
+    const parseList = JSON.parse(list) as string[];
+    localStorage.setItem('lastUrls', JSON.stringify([...parseList, e.url]))
   }
   webview.value?.addEventListener('will-navigate', navigateEvent)
   webview.value?.addEventListener('did-navigate', navigateEvent)
