@@ -28,6 +28,7 @@ export default defineConfig(({ command }) => {
           // Shortcut of `build.lib.entry`
           entry: 'electron/main/index.ts',
           onstart({ startup }) {
+            console.log('@test', process.env.VSCODE_DEBUG)
             if (process.env.VSCODE_DEBUG)
               console.log(/* For `.vscode/.debug.script.mjs` */'[startup] Electron App')
             else

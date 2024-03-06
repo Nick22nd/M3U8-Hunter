@@ -1,17 +1,24 @@
 <template>
   <div class="flex flex-col h-screen box-border pb-4">
     <TopBar :url="url">
-      <el-input v-model="url" placeholder="Please input URL">
-        <template #prefix>
-          <el-icon class="el-input__icon">
-            <Search />
-          </el-icon>
-        </template>
-      </el-input>
+      <div class="flex justify-between">
+        <el-input v-model="url" placeholder="Please input URL">
+          <template #prefix>
+            <el-icon class="el-input__icon">
+              <Search />
+            </el-icon>
+          </template>
+        </el-input>
+        <el-select v-model="url" placeholder="Select" size="large" style="width: 40px">
+          <el-option v-for="item in history" :key="item" :label="item" :value="item" style="width: 240px" />
+        </el-select>
+
+      </div>
       <el-button class="fixed bottom-0 right-0" @click="openDevTool">
         open dev
       </el-button>
       <el-popover placement="right" :width="400" trigger="click">
+
         <template #reference>
           <el-button class="fixed bottom-0 left-0">
             Click to activate
@@ -19,11 +26,12 @@
         </template>
         <el-table :data="mediaTasks" height="250">
           <el-table-column type="index" width="50" />
-          <el-table-column :show-overflow-tooltip="true" class="truncate" width="150" property="headers"
-            label="headers" />
           <el-table-column width="100" property="type" label="type" />
           <el-table-column :show-overflow-tooltip="true" class="truncate" width="300" property="url" label="url" />
+          <el-table-column :show-overflow-tooltip="true" class="truncate" width="150" property="headers"
+            label="headers" />
           <el-table-column fixed="right" label="Operations" width="120">
+
             <template #default="scope">
               <el-button link type="primary" size="small" @click.prevent="download(scope.row)">
                 download
@@ -33,15 +41,17 @@
         </el-table>
       </el-popover>
     </TopBar>
-    <webview ref="webview" :src="url" class="flex-1 w-full" preload="./preload.js" />
+    <webview ref="webview" :src="url" class="flex-1 w-full" preload="./preload.js" allowpopups />
   </div>
 </template>
+
 <script setup lang="ts">
 import type { Ref } from 'vue'
 import { onBeforeMount, onMounted, onUnmounted, ref, toRaw } from 'vue'
 import { Search } from 'lucide-vue-next'
 import TopBar from '../components/TopBar.vue'
 import { Message4Renderer, MessageName } from '../../common/common.types';
+import { useStorage } from '@vueuse/core';
 
 interface MediaMessage {
   headers: string
@@ -53,6 +63,7 @@ interface propsTask {
 }
 
 defineProps<propsTask>()
+const options = ref([])
 function openDevTool() {
   if (webview.value?.isDevToolsOpened())
     webview.value?.closeDevTools()
@@ -62,11 +73,12 @@ function openDevTool() {
 }
 const { sendMsg: sendMsgToMainProcess } = window.electron
 const url = ref('')
+const history = useStorage('history', [], localStorage) as Ref<string[]>
 type webviewType = Electron.WebviewTag | null
 const webview = ref(null) as Ref<webviewType>
 onMounted(() => {
   console.log('mounted')
-  url.value = localStorage.getItem('lastUrl') || ''
+  url.value = history.value.at(-1) || ''
   webview.value?.addEventListener('dom-ready', () => {
     console.log('dom-ready')
     // webview.value?.openDevTools()
@@ -79,15 +91,20 @@ onMounted(() => {
   })
   const navigateEvent = (e: { url: string; }) => {
     url.value = e.url
-    const list = localStorage.getItem('lastUrls') || '[]'
-    const parseList = JSON.parse(list) as string[];
-    localStorage.setItem('lastUrls', JSON.stringify([...parseList, e.url]))
+    if (!history.value.includes(e.url)) {
+      history.value.push(e.url)
+    } else {
+      // move item to last position
+      const indexOfItem = history.value.indexOf(e.url)
+      const lastOne = history.value.length - 1
+      history.value[indexOfItem] = history.value[lastOne]
+      history.value[lastOne] = e.url
+    }
   }
   webview.value?.addEventListener('will-navigate', navigateEvent)
   webview.value?.addEventListener('did-navigate', navigateEvent)
 })
 onUnmounted(() => {
-  localStorage.setItem('lastUrl', url.value)
 })
 onBeforeMount(
   () => {
@@ -113,4 +130,5 @@ async function download(row: MediaMessage) {
   }
 }
 </script>
+
 <style scoped></style>

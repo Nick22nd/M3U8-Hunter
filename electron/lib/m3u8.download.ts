@@ -5,6 +5,7 @@ import { Parser } from 'm3u8-parser'
 import { getAppDataDir } from './m3u8.app'
 import { Task } from '../../common/common.types'
 import { HttpProxyAgent, HttpsProxyAgent } from './proxy'
+import async from 'async'
 
 export async function downloadTS(task: Task) {
   console.log('task', task)
@@ -51,8 +52,8 @@ export async function downloadTS(task: Task) {
   // download key
   const key = parser.manifest.segments[0].key.uri
   if (key) {
-    const url = `${baseURL}${key.uri}`
-    console.log('key', key)
+    const url = `${baseURL}${key}`
+    console.log('key', url)
     await download(url, tsDir, {
       headers: task.headers,
       // agent: url.startsWith('https') ? proxy.https : proxy.http,
@@ -60,16 +61,31 @@ export async function downloadTS(task: Task) {
     })
   }
   // console.log('segments', segments)
-  for (const segment of segments) {
+  // for (const segment of segments) {
+  //   console.log('segment', segment)
+  //   const url = `${baseURL}${segment.uri}`
+  //   // const name = segment.uri
+  //   await download(url, tsDir, {
+  //     headers: task.headers,
+  //     // agent: url.startsWith('https') ? proxy.https : proxy.http,
+  //     // filename: name,
+  //   })
+  // }
+  async.mapLimit(segments, 5, async function (segment) {
     console.log('segment', segment)
     const url = `${baseURL}${segment.uri}`
     // const name = segment.uri
-    await download(url, tsDir, {
+    let a = await download(url, tsDir, {
       headers: task.headers,
       // agent: url.startsWith('https') ? proxy.https : proxy.http,
       // filename: name,
     })
-  }
+    return a
+  }, (err, results) => {
+    if (err) throw err
+    // results is now an array of the response bodies
+    console.log('task ok', results)
+  })
 }
 
 // async function mainModule() {

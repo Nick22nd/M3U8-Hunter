@@ -28,10 +28,5 @@
       "path": "./tsconfig.node.json"
     }
   ],
-  "moduleResolution": "node",
-  "paths": {
-    "@render/*": [
-      "src/*"
-    ],
-  },
+  "moduleResolution": "node"
 }
