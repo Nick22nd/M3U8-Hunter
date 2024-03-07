@@ -1,7 +1,7 @@
 import { JSONFilePreset } from 'lowdb/node'
 import { getAppDataDir } from './m3u8.app'
 import { join } from 'node:path'
-import { TaskItem } from '../../common/common.types'
+import { TaskItem } from '../common.types'
 interface Data {
   tasks: TaskItem[]
 }

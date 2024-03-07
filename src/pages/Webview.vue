@@ -63,7 +63,7 @@ import type { Ref } from 'vue'
 import { onBeforeMount, onMounted, onUnmounted, ref, toRaw } from 'vue'
 import { ArrowLeft, ArrowRight, X, RefreshCw, Search } from 'lucide-vue-next'
 import TopBar from '../components/TopBar.vue'
-import { Message4Renderer, MessageName, TaskItem } from '../../common/common.types';
+import { Message4Renderer, MessageName, TaskItem } from '../common.types';
 import { useStorage } from '@vueuse/core';
 import { useFindedMediaStore } from '../stores/';
 const { clearFindResource } = useFindedMediaStore()

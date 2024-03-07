@@ -32,7 +32,7 @@
 
 <script setup lang="ts">
 import { ref, toRaw } from 'vue';
-import { TaskItem, Message4Renderer, MessageName } from '../../common/common.types';
+import { TaskItem, Message4Renderer, MessageName } from '../common.types';
 const { sendMsg: sendMsgToMainProcess } = window.electron
 interface propsTask {
     tasks: TaskItem[]

@@ -1,6 +1,6 @@
 import { defineStore } from "pinia"
 import { computed, ref } from "vue"
-import { FindedResource, TaskItem } from "../../common/common.types"
+import { FindedResource, TaskItem } from "../common.types"
 
 export const useFindedMediaStore = defineStore('FindedMedia', () => {
     const findedMediaList = ref<FindedResource[]>([])

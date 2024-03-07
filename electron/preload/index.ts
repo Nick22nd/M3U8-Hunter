@@ -1,5 +1,5 @@
 import { ipcRenderer, contextBridge } from 'electron'
-import { Message4Renderer } from '../../common/common.types'
+import { Message4Renderer } from '../common.types'
 
 // --------- Expose some API to the Renderer process ---------
 contextBridge.exposeInMainWorld('ipcRenderer', withPrototype(ipcRenderer))

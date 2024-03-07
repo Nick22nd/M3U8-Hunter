@@ -5,7 +5,7 @@ import About from './pages/About.vue';
 import Home from './pages/Home.vue';
 import Tasks from './pages/Tasks.vue';
 import WebviewVue from './pages/Webview.vue';
-import { TaskItem, MediaMessage, Message4Renderer, MessageName } from '../common/common.types';
+import { TaskItem, MediaMessage, Message4Renderer, MessageName } from './common.types';
 import { TabPaneName } from 'element-plus';
 import { useFindedMediaStore } from './stores/';
 const tabs = [

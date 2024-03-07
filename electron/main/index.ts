@@ -3,7 +3,7 @@ import { release } from 'node:os'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { appService } from '../lib/m3u8.app'
-import { Message4Renderer, MessageName } from '../../common/common.types'
+import { Message4Renderer, MessageName } from '../common.types'
 import electron from 'vite-plugin-electron'
 import { downloadTS } from '../lib/m3u8.download'
 
@@ -110,45 +110,7 @@ async function createWindow() {
   // Test actively push message to the Electron-Renderer
   win.webContents.on('did-finish-load', () => {
     win?.webContents.send('main-process-message', new Date().toLocaleString() + ' m3u8-hunter')
-    ipcMain.handle('msg', async (event, arg) => {
-      console.log('from ipc msg:', arg)
-      const { type, name, data } = arg
-      if (name === MessageName.getTasks) {
-        const taskList = await appService.getTasks()
-        // console.log('data getTasks', data, JSON.stringify(data))
-        const newMessage: Message4Renderer = {
-          type: 'm3u8',
-          name: MessageName.getTasks,
-          data: taskList,
-        }
-        win?.webContents.send('reply-msg', newMessage)
-        return
-      } else if (name === MessageName.downloadM3u8) {
-        // if (['m3u8', 'M3U8'].includes(data.type)) {
-        const _item = data
-        appService.downloadM3u8(_item)
-        // }
-      } else if (name === MessageName.deleteTask) {
-        console.log('deleteTask', data)
-        await appService.deleteTask(data)
-        const taskList = await appService.getTasks()
-        // console.log('data getTasks', data, JSON.stringify(data))
-        const newMessage: Message4Renderer = {
-          type: 'm3u8',
-          name: MessageName.getTasks,
-          data: taskList,
-        }
-        win?.webContents.send('reply-msg', newMessage)
-      } else if (name === MessageName.startTask) {
-        console.log('startTask', data)
-        try {
-          // await appService.downloadM3u8(_item)
-          await downloadTS(data)
-        } catch (error) {
-          console.log('error', error)
-        }
-      }
-    })
+
   })
 
   // Make all links open with the browser, not with the application
@@ -158,7 +120,45 @@ async function createWindow() {
   })
   // win.webContents.on('will-navigate', (event, url) => { }) #344
 }
-
+ipcMain.handle('msg', async (event, arg) => {
+  console.log('from ipc msg:', arg)
+  const { type, name, data } = arg
+  if (name === MessageName.getTasks) {
+    const taskList = await appService.getTasks()
+    // console.log('data getTasks', data, JSON.stringify(data))
+    const newMessage: Message4Renderer = {
+      type: 'm3u8',
+      name: MessageName.getTasks,
+      data: taskList,
+    }
+    win?.webContents.send('reply-msg', newMessage)
+    return
+  } else if (name === MessageName.downloadM3u8) {
+    // if (['m3u8', 'M3U8'].includes(data.type)) {
+    const _item = data
+    appService.downloadM3u8(_item)
+    // }
+  } else if (name === MessageName.deleteTask) {
+    console.log('deleteTask', data)
+    await appService.deleteTask(data)
+    const taskList = await appService.getTasks()
+    // console.log('data getTasks', data, JSON.stringify(data))
+    const newMessage: Message4Renderer = {
+      type: 'm3u8',
+      name: MessageName.getTasks,
+      data: taskList,
+    }
+    win?.webContents.send('reply-msg', newMessage)
+  } else if (name === MessageName.startTask) {
+    console.log('startTask', data)
+    try {
+      // await appService.downloadM3u8(_item)
+      await downloadTS(data)
+    } catch (error) {
+      console.log('error', error)
+    }
+  }
+})
 app.whenReady().then(createWindow)
 
 app.on('window-all-closed', () => {
@@ -175,6 +175,7 @@ app.on('second-instance', () => {
 })
 app.on('activate', () => {
   const allWindows = BrowserWindow.getAllWindows()
+  console.log('activate', allWindows.length)
   if (allWindows.length) {
     allWindows[0].focus()
   } else {
@@ -184,6 +185,7 @@ app.on('activate', () => {
 
 // New window example arg: new windows url
 ipcMain.handle('open-win', (_, arg) => {
+  console.log('open-win', arg)
   const childWindow = new BrowserWindow({
     webPreferences: {
       preload,

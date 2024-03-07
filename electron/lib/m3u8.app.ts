@@ -7,7 +7,7 @@ import fsExtra from 'fs-extra'
 
 import { jsondb } from './jsondb'
 import { dialog } from 'electron'
-import { TaskItem } from '../../common/common.types'
+import { TaskItem } from '../common.types'
 
 export function getAppDataDir() {
     const appDir = join(os.homedir(), 'M3U8Hunter');
@@ -28,7 +28,7 @@ export class AppService {
     public async getTasks() {
         jsondb.init()
         const data = await jsondb.getDB()
-        console.log('data', data)
+        // console.log('data', data)
         return data
     }
 

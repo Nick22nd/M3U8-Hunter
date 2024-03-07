@@ -3,8 +3,7 @@ import fs from 'node:fs'
 import download from 'download'
 import { Parser } from 'm3u8-parser'
 import { getAppDataDir } from './m3u8.app'
-import { TaskItem } from '../../common/common.types'
-import { HttpProxyAgent, HttpsProxyAgent } from './proxy'
+import { TaskItem } from '../common.types'
 import async from 'async'
 import log from 'electron-log/main';
 
@@ -34,24 +33,6 @@ export async function downloadTS(task: TaskItem) {
   if (!fs.existsSync(tsDir)) {
     console.log('tsDir', tsDir)
     fs.mkdirSync(tsDir, { recursive: true })
-  }
-  const proxy = {
-    http: new HttpProxyAgent({
-      keepAlive: true,
-      keepAliveMsecs: 1000,
-      maxSockets: 256,
-      maxFreeSockets: 256,
-      scheduling: 'lifo',
-      proxy: "http://127.0.0.1:7890"
-    }),
-    https: new HttpsProxyAgent({
-      keepAlive: true,
-      keepAliveMsecs: 1000,
-      maxSockets: 256,
-      maxFreeSockets: 256,
-      scheduling: 'lifo',
-      proxy: "https://127.0.0.1:7890"
-    })
   }
   // download key
   const key = parser.manifest.segments[0].key.uri
