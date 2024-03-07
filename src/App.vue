@@ -5,8 +5,9 @@ import About from './pages/About.vue';
 import Home from './pages/Home.vue';
 import Tasks from './pages/Tasks.vue';
 import WebviewVue from './pages/Webview.vue';
-import { Task, MediaMessage, Message4Renderer, MessageName } from '../common/common.types';
+import { TaskItem, MediaMessage, Message4Renderer, MessageName } from '../common/common.types';
 import { TabPaneName } from 'element-plus';
+import { useFindedMediaStore } from './stores/';
 const tabs = [
   {
     label: 'Home',
@@ -26,13 +27,9 @@ const tabs = [
   }
 ]
 const tabPosition = ref('left')
-type findMedia = {
-  headers: string
-  type: string
-  url: string
-}
-const tasks = ref<Task[]>([])
-const findedMediaList = ref<findMedia[]>([])
+
+const tasks = ref<TaskItem[]>([])
+const store = useFindedMediaStore()
 const { sendMsg: sendMsgToMainProcess, onReplyMsg } = window.electron
 onMounted(() => {
   console.log('mounted')
@@ -45,11 +42,7 @@ onMounted(() => {
     } else if (msg.name === MessageName.findM3u8) {
       console.log('findM3u8', data)
       const singleData = data as unknown as MediaMessage
-      const isDuplicated = findedMediaList.value.some(item => item.url === singleData.browserVideoItem.url)
-      if (!isDuplicated)
-        findedMediaList.value.push(singleData.browserVideoItem)
-      else
-        console.log('duplicated')
+      store.addFindResource(singleData.browserVideoItem)
     }
   })
 })
@@ -57,7 +50,6 @@ const changeTabs = (name: TabPaneName) => {
   console.log('changeTabs', name)
   if (name === 'Tasks') {
     sendMsgToMainProcess({ name: MessageName.getTasks })
-
   }
 }
 </script>
@@ -75,7 +67,7 @@ const changeTabs = (name: TabPaneName) => {
         <Tasks :tasks="tasks"></Tasks>
       </el-tab-pane>
       <el-tab-pane label="WebviewVue">
-        <WebviewVue :mediaTasks="findedMediaList"></WebviewVue>
+        <WebviewVue :mediaTasks="store.findedMediaList"></WebviewVue>
       </el-tab-pane>
     </el-tabs>
   </el-container>

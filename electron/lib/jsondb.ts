@@ -1,18 +1,9 @@
 import { JSONFilePreset } from 'lowdb/node'
 import { getAppDataDir } from './m3u8.app'
 import { join } from 'node:path'
+import { TaskItem } from '../../common/common.types'
 interface Data {
   tasks: TaskItem[]
-}
-interface TaskItem {
-  url: string
-  headers: {
-    [key: string]: string
-  }
-  status: 'downloading' | 'downloaded' | 'failed',
-  duration?: number
-  durationStr?: string
-
 }
 
 const defaultData: Data = { tasks: [] }
@@ -37,6 +28,7 @@ class JSONDB {
     await this.db.write()
   }
   public async update(task: TaskItem) {
+    console.log('update', task)
     try {
 
       const isExist = this.db.data.tasks.some((item) => item.url === task.url)

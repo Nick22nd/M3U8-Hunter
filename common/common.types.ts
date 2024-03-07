@@ -10,7 +10,7 @@ export type Message4Renderer = {
     name: MessageName
     data: any
 }
-export interface Task {
+export interface TaskItem {
     url: string
     headers: {
         [key: string]: string
@@ -19,10 +19,23 @@ export interface Task {
     status: 'downloading' | 'downloaded' | 'failed',
     duration?: number
     durationStr?: string
+    name?: string,
+    from?: string,
+    createTime?: number
+    title?: string
+}
+export interface FindedResource {
+    url: string
+    headers: {
+        [key: string]: string
+    }
+    type: string
 }
 export interface MediaMessage {
     browserVideoItem: {
-        headers: string
+        headers: {
+            [key: string]: string
+        }
         type: string
         url: string
     }

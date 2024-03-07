@@ -3,11 +3,15 @@ import fs from 'node:fs'
 import download from 'download'
 import { Parser } from 'm3u8-parser'
 import { getAppDataDir } from './m3u8.app'
-import { Task } from '../../common/common.types'
+import { TaskItem } from '../../common/common.types'
 import { HttpProxyAgent, HttpsProxyAgent } from './proxy'
 import async from 'async'
+import log from 'electron-log/main';
 
-export async function downloadTS(task: Task) {
+// Optional, initialize the logger for any renderer process
+log.initialize();
+
+export async function downloadTS(task: TaskItem) {
   console.log('task', task)
   const sampleFilename = new URL(task.url).pathname.split('/').pop()
   const targetPath = getAppDataDir()
@@ -73,16 +77,31 @@ export async function downloadTS(task: Task) {
   // }
   async.mapLimit(segments, 5, async function (segment) {
     console.log('segment', segment)
-    const url = `${baseURL}${segment.uri}`
-    // const name = segment.uri
-    let a = await download(url, tsDir, {
-      headers: task.headers,
-      // agent: url.startsWith('https') ? proxy.https : proxy.http,
-      // filename: name,
-    })
-    return a
+    try {
+      const url = `${baseURL}${segment.uri}`
+      // const name = segment.uri
+      if (fs.existsSync(join(tsDir, segment.uri))) {
+        log.info('[download] already existed, skip segment', segment)
+        return 'ok'
+      }
+      let a = await download(url, tsDir, {
+        headers: task.headers,
+        // agent: url.startsWith('https') ? proxy.https : proxy.http,
+        // filename: name,
+      })
+      return 'ok'
+
+    } catch (error) {
+      console.error(error);
+      log.error('[download] error segment', segment, error);
+      return 'error'
+    }
   }, (err, results) => {
-    if (err) throw err
+    if (err) {
+      console.error(err)
+      log.error('[download] error', err);
+      return
+    }
     // results is now an array of the response bodies
     console.log('task ok', results)
   })

@@ -7,12 +7,8 @@ import fsExtra from 'fs-extra'
 
 import { jsondb } from './jsondb'
 import { dialog } from 'electron'
+import { TaskItem } from '../../common/common.types'
 
-interface BrowserVideoItem {
-    headers: string
-    type: string
-    url: string
-}
 export function getAppDataDir() {
     const appDir = join(os.homedir(), 'M3U8Hunter');
     fsExtra.ensureDirSync(appDir)
@@ -37,7 +33,7 @@ export class AppService {
     }
 
     // download m3u8
-    public async downloadM3u8(videoItem: BrowserVideoItem, targetPath = this.storagePath) {
+    public async downloadM3u8(videoItem: TaskItem, targetPath = this.storagePath) {
         const m3u8Url = videoItem.url
         const headers = videoItem.headers
         const sampleFilename = new URL(m3u8Url).pathname.split('/').pop()
@@ -51,11 +47,13 @@ export class AppService {
                 console.log('file exists')
                 const duration = analyseM3u8File(targetPath, sampleFilename)
                 await jsondb.update({
+                    ...videoItem,
                     url: m3u8Url,
-                    headers: JSON.parse(headers),
+                    headers: headers,
                     status: 'downloaded',
                     duration,
                     durationStr: timeFormat(duration),
+                    createTime: new Date().getTime(),
                 })
             }
             else {
@@ -66,17 +64,19 @@ export class AppService {
                 const duration = await analyseM3u8File(targetPath, sampleFilename)
                 try {
                     await jsondb.update({
+                        ...videoItem,
                         url: m3u8Url,
-                        headers: JSON.parse(headers),
+                        headers: headers,
                         status: 'downloaded',
                         duration,
                         durationStr: timeFormat(duration),
+                        createTime: new Date().getTime(),
                     })
                     const options: Electron.MessageBoxOptions = {
                         type: 'info',
                         title: 'Application Menu Demo',
                         buttons: ['Ok'],
-                        message: 'name: ' + sampleFilename + 'time durattion ' + timeFormat(duration) + 's',
+                        message: 'name: ' + sampleFilename + '\ntime durattion ' + timeFormat(duration) + 's',
                     }
                     dialog.showMessageBox(options)
                 } catch (error) {
@@ -101,7 +101,7 @@ export class AppService {
         }
     }
 }
-async function downloadFile(url: string, targetPath: string, headers: string) {
+async function downloadFile(url: string, targetPath: string, headers: TaskItem["headers"]) {
     // const stream = got.stream(url)
     // name = name || new URL(url).pathname.split('/').pop()
     // console.log('name', name)
@@ -113,7 +113,7 @@ async function downloadFile(url: string, targetPath: string, headers: string) {
     //   writer.on('finish', resolve)
     //   writer.on('error', reject)
     // })
-    const _headers = JSON.parse(headers)
+    const _headers = headers
     try {
         await jsondb.update({
             url,

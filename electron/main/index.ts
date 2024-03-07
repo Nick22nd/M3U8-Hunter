@@ -50,7 +50,7 @@ const indexHtml = join(process.env.DIST, 'index.html')
 
 async function createWindow() {
   win = new BrowserWindow({
-    title: 'Main window',
+    title: 'M3U8-Hunter',
     icon: join(process.env.VITE_PUBLIC, 'favicon.ico'),
     width: 1024,
     height: 768,
@@ -68,6 +68,8 @@ async function createWindow() {
   })
 
   if (process.env.VITE_DEV_SERVER_URL) { // electron-vite-vue#298
+    console.log("process.env.VITE_DEV_SERVER_URLs", process.env.VITE_DEV_SERVER_URL)
+
     win.loadURL(url)
     // Open devTool if the app is not packaged
     win.webContents.openDevTools()
@@ -89,7 +91,7 @@ async function createWindow() {
         const _item = {
           type: _type.toUpperCase(),
           url: details.url,
-          headers: JSON.stringify(details.requestHeaders),
+          headers: details.requestHeaders,
         }
         const req: Message4Renderer = {
           data: { browserVideoItem: _item },
@@ -99,7 +101,6 @@ async function createWindow() {
         win.webContents.send('reply-msg', req)
         // mainWindow && mainWindow.webContents.send('message', { browserVideoItem: _item })
       }
-
       callback({ cancel: false })
     })
   } else {
@@ -140,8 +141,6 @@ async function createWindow() {
         win?.webContents.send('reply-msg', newMessage)
       } else if (name === MessageName.startTask) {
         console.log('startTask', data)
-        // data.headers = JSON.stringify(data.headers)
-        // const _item = data
         try {
           // await appService.downloadM3u8(_item)
           await downloadTS(data)
@@ -194,6 +193,7 @@ ipcMain.handle('open-win', (_, arg) => {
   })
 
   if (process.env.VITE_DEV_SERVER_URL) {
+    console.log("process.env.VITE_DEV_SERVER_URL", process.env.VITE_DEV_SERVER_URL)
     childWindow.loadURL(`${url}#${arg}`)
   } else {
     childWindow.loadFile(indexHtml, { hash: arg })
