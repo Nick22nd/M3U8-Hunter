@@ -1,13 +1,37 @@
 # README
 
-## use
+## introduction
+
+This is a m3u8 downloader based on electron and ffmpeg. It developed for personal use, and it is not guaranteed to be stable. If you have any questions, please submit an issue.
+
+## requirements
+need install the following software:
+- ffmpeg: convert the m3u8 file to mp4 file
+- serve(https://www.npmjs.com/package/serve) or other static server:  serve the directory that included the m3u8 file
+
+## install
 
 ```shell
-ELECTRON_MIRROR="https://npmmirror.com/mirrors/electron/" ni
+npm i
+```
+if you are in China or other countries need to use npm mirror, you can use the following command to install the dependencies(replace the `https://npmmirror.com` with your own mirror):
+
+```shell
+ELECTRON_MIRROR="https://npmmirror.com/mirrors/electron/" npm i
+```
+## run
+    
+```shell
+npm run dev
 ```
 
-## 遇到的问题
+## build
+    
+```shell
+npm run build
+```
 
-1. esm 模块被当成commonjs处理, 该怎么处理?
-2. webview中注入的js, 该怎么在vue文件中使用?路径, 打包怎么处理都是问题
-3. nest在实际使用中, 并没有被用上太多
+
+## project
+
+This project is inspired by: [M3U8-Downloader](https://github.com/HeiSir2014/M3U8-Downloader)
