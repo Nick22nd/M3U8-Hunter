@@ -37,6 +37,7 @@ export class AppService {
         const m3u8Url = videoItem.url
         const headers = videoItem.headers
         const sampleFilename = new URL(m3u8Url).pathname.split('/').pop()
+        targetPath = join(targetPath, new Date().getTime().toString())
         if (!fs.existsSync(targetPath)) {
             console.log('targetPath', targetPath)
             fs.mkdirSync(targetPath, { recursive: true })
@@ -54,6 +55,7 @@ export class AppService {
                     duration,
                     durationStr: timeFormat(duration),
                     createTime: new Date().getTime(),
+                    directory: targetPath,
                 })
             }
             else {
@@ -71,6 +73,7 @@ export class AppService {
                         duration,
                         durationStr: timeFormat(duration),
                         createTime: new Date().getTime(),
+                        directory: targetPath,
                     })
                     const options: Electron.MessageBoxOptions = {
                         type: 'info',
@@ -92,6 +95,21 @@ export class AppService {
         const data = await jsondb.getDB()
         const tasks = data.tasks
         tasks.splice(num, 1)
+        try {
+            jsondb.db.tasks = tasks
+            await jsondb.db.write()
+            fsExtra.removeSync(join(this.storagePath, tasks[num].name))
+        }
+        catch (error) {
+            console.log('error', error)
+        }
+    }
+    public async refactorTask() {
+        const data = await jsondb.getDB()
+        const tasks = data.tasks
+        tasks.forEach((item, index) => {
+            item.directory = join(this.storagePath, item.name.split('.')[0])
+        })
         try {
             jsondb.db.tasks = tasks
             await jsondb.db.write()

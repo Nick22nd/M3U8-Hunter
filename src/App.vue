@@ -1,3 +1,22 @@
+<template>
+  <el-container class="h-screen">
+    <el-tabs v-model:model-value="taskStore.activeTab" @tab-change="changeTabs" type="border-card" tab-position="left"
+      class="w-full">
+      <el-tab-pane label="Home" name="Home">
+        <Home></Home>
+      </el-tab-pane>
+      <el-tab-pane label="About" name="About">
+        <About></About>
+      </el-tab-pane>
+      <el-tab-pane label="Tasks" name="Tasks">
+        <Tasks :tasks="tasks"></Tasks>
+      </el-tab-pane>
+      <el-tab-pane label="WebviewVue" name="Webview">
+        <WebviewVue :mediaTasks="store.findedMediaList"></WebviewVue>
+      </el-tab-pane>
+    </el-tabs>
+  </el-container>
+</template>
 <script setup lang="ts">
 import SideBar from './components/SideBar.vue'
 import { onMounted, ref } from 'vue'
@@ -7,7 +26,7 @@ import Tasks from './pages/Tasks.vue';
 import WebviewVue from './pages/Webview.vue';
 import { TaskItem, MediaMessage, Message4Renderer, MessageName } from './common.types';
 import { TabPaneName } from 'element-plus';
-import { useFindedMediaStore } from './stores/';
+import { useFindedMediaStore, useTaskStore } from './stores/';
 const tabs = [
   {
     label: 'Home',
@@ -26,6 +45,7 @@ const tabs = [
     component: WebviewVue
   }
 ]
+const taskStore = useTaskStore()
 const tabPosition = ref('left')
 
 const tasks = ref<TaskItem[]>([])
@@ -54,24 +74,7 @@ const changeTabs = (name: TabPaneName) => {
 }
 </script>
 
-<template>
-  <el-container class="h-screen">
-    <el-tabs @tab-change="changeTabs" type="border-card" tab-position="left" class="w-full">
-      <el-tab-pane label="Home">
-        <Home></Home>
-      </el-tab-pane>
-      <el-tab-pane label="About">
-        <About></About>
-      </el-tab-pane>
-      <el-tab-pane label="Tasks" name="Tasks">
-        <Tasks :tasks="tasks"></Tasks>
-      </el-tab-pane>
-      <el-tab-pane label="WebviewVue">
-        <WebviewVue :mediaTasks="store.findedMediaList"></WebviewVue>
-      </el-tab-pane>
-    </el-tabs>
-  </el-container>
-</template>
+
 
 <style>
 #app {

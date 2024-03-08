@@ -1,17 +1,42 @@
+<template>
+  <div>
+    <h2>Hello Index</h2>
+    <el-input v-model="taskStore.playUrl" placeholder="Please input" @change="urlChange" />
+    <div ref="videoDom" class="border w-full h-[10rm]" />
+  </div>
+</template>
+
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import DPlayer from 'dplayer'
 import Hls from 'hls.js'
-
+import { useTaskStore } from '../stores';
+const taskStore = useTaskStore()
 const videoDom = ref(null)
-const m3u8Url = ref('http://localhost:3000/first-take.m3u8')
 const dplayer = ref(null as DPlayer | null)
+watch(() => taskStore.playUrl, async (newUrl, oldUrl) => {
+  console.log('url', newUrl, oldUrl)
+  if (dplayer.value)
+    dplayer.value.switchVideo({
+      url: newUrl,
+      type: 'customHls',
+      customType: {
+        customHls(video: HTMLMediaElement, player: any) {
+          const hls = new Hls()
+          hls.loadSource(video.src)
+          hls.attachMedia(video)
+        },
+      },
+
+      // @ts-ignore
+    }, undefined)
+})
 onMounted(() => {
   console.log('mounted')
   const dp = new DPlayer({
     container: videoDom.value,
     video: {
-      url: m3u8Url.value,
+      url: taskStore.playUrl,
       type: 'customHls',
       customType: {
         customHls(video: HTMLMediaElement, player: any) {
@@ -22,15 +47,18 @@ onMounted(() => {
         },
       },
     },
+    autoplay: true,
   })
   dplayer.value = dp
   // console.log('dp', dp.plugins.hls)
-  dp.play()
+  // dp.play()
 })
+
 function urlChange() {
+  console.log('urlChange', taskStore.playUrl)
   if (dplayer.value)
     dplayer.value.switchVideo({
-      url: m3u8Url.value,
+      url: taskStore.playUrl,
       type: 'customHls',
       customType: {
         customHls(video: HTMLMediaElement, player: any) {
@@ -44,13 +72,4 @@ function urlChange() {
     }, {})
 }
 </script>
-
-<template>
-  <div>
-    <h2>Hello Index</h2>
-    <el-input v-model="m3u8Url" placeholder="Please input" @change="urlChange" />
-    <div ref="videoDom" class="border w-full h-[10rm]" />
-  </div>
-</template>
-
 <style scoped></style>

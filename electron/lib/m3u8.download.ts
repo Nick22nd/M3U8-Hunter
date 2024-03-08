@@ -12,14 +12,15 @@ log.initialize();
 
 export async function downloadTS(task: TaskItem) {
   console.log('task', task)
-  const sampleFilename = new URL(task.url).pathname.split('/').pop()
+  const urlOjb = new URL(task.url)
+  const sampleFilename = urlOjb.pathname.split('/').pop()
   const targetPath = getAppDataDir()
-  const baseURL = task.url.replace(sampleFilename, '')
+  const baseURL = task.url.substring(0, task.url.indexOf(sampleFilename))
   console.log('baseURL', baseURL)
-  const tsDir = `${targetPath}/${sampleFilename.split('.')[0]}`
+  const tsDir = task.directory
   console.log('tsDir', tsDir)
 
-  const str = fs.readFileSync(join(targetPath, sampleFilename), 'utf8')
+  const str = fs.readFileSync(join(tsDir, sampleFilename), 'utf8')
   const parser = new Parser()
   parser.push(str)
   // console.log(parser.manifest)
@@ -35,7 +36,7 @@ export async function downloadTS(task: TaskItem) {
     fs.mkdirSync(tsDir, { recursive: true })
   }
   // download key
-  const key = parser.manifest.segments[0].key.uri
+  const key = parser.manifest.segments[0].key?.uri
   if (key) {
     const url = `${baseURL}${key}`
     console.log('key', url)
@@ -45,6 +46,11 @@ export async function downloadTS(task: TaskItem) {
       // filename: 'key',
     })
   }
+  // check if segments existed
+  const existedSegments = fs.readdirSync(tsDir)
+  console.log('existedSegments', existedSegments)
+
+
   // console.log('segments', segments)
   // for (const segment of segments) {
   //   console.log('segment', segment)
@@ -60,21 +66,24 @@ export async function downloadTS(task: TaskItem) {
     console.log('segment', segment)
     try {
       const url = `${baseURL}${segment.uri}`
+      const segmentFile = new URL(url).pathname.split('/').pop()
       // const name = segment.uri
-      if (fs.existsSync(join(tsDir, segment.uri))) {
+      if (fs.existsSync(join(tsDir, segmentFile))) {
         log.info('[download] already existed, skip segment', segment)
+        return 'existed'
+      } else {
+        let a = await download(url, tsDir, {
+          headers: task.headers,
+          // agent: url.startsWith('https') ? proxy.https : proxy.http,
+          // filename: name,
+        })
         return 'ok'
       }
-      let a = await download(url, tsDir, {
-        headers: task.headers,
-        // agent: url.startsWith('https') ? proxy.https : proxy.http,
-        // filename: name,
-      })
-      return 'ok'
 
     } catch (error) {
       console.error(error);
-      log.error('[download] error segment', segment, error);
+      const url = `${baseURL}${segment.uri}`
+      log.error('[download] error segment', url, segment, error);
       return 'error'
     }
   }, (err, results) => {

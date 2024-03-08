@@ -13,7 +13,7 @@
           <X v-else />
 
         </el-icon>
-        <el-input v-model="url" placeholder="Please input URL">
+        <el-input v-model="inputUrl" placeholder="Please input URL" @change="urlChange">
 
           <template #prefix>
             <el-icon class="el-input__icon">
@@ -79,6 +79,7 @@ interface propsTask {
 }
 
 defineProps<propsTask>()
+const inputUrl = ref('')
 const options = ref([])
 function openDevTool() {
   if (webview.value?.isDevToolsOpened())
@@ -107,6 +108,7 @@ const webview = ref(null) as Ref<webviewType>
 onMounted(() => {
   console.log('mounted', webview.value)
   url.value = history.value.at(-1) || ''
+  inputUrl.value = url.value
   webview.value?.addEventListener('dom-ready', () => {
     console.log('dom-ready')
     // webview.value?.openDevTools()
@@ -118,6 +120,7 @@ onMounted(() => {
       webview.value?.loadURL(e.url)
   })
   const navigateEvent = (e: { url: string; }) => {
+    console.log('will-navigate', e.url)
     url.value = e.url
     if (!history.value.includes(e.url)) {
       history.value.push(e.url)
@@ -134,7 +137,7 @@ onMounted(() => {
   webview.value?.addEventListener('did-navigate', (e) => {
     console.log('did-navigate')
     url.value = e.url
-
+    inputUrl.value = e.url
     canGoBack.value = webview.value?.canGoBack() || false
     canGoForward.value = webview.value?.canGoForward() || false
   })
@@ -146,14 +149,12 @@ onMounted(() => {
     domReady.value = false
   })
 })
-onUnmounted(() => {
-})
-onBeforeMount(
-  () => {
-    console.log('before mount')
-  },
+const urlChange = (val: string | number) => {
+  console.log('urlChange', val)
+  url.value = val as string
+  // webview.value?.loadURL(val as string)
+}
 
-)
 
 async function download(row: MediaMessage) {
   try {

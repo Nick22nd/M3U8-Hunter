@@ -3,7 +3,8 @@ export enum MessageName {
     downloadM3u8,
     findM3u8,
     deleteTask,
-    startTask
+    startTask,
+    openDir
 }
 export type Message4Renderer = {
     type: string
@@ -23,6 +24,7 @@ export interface TaskItem {
     from?: string,
     createTime?: number
     title?: string
+    directory?: string
 }
 export interface FindedResource {
     url: string

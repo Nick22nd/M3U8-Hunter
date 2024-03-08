@@ -73,40 +73,39 @@ async function createWindow() {
     win.loadURL(url)
     // Open devTool if the app is not packaged
     win.webContents.openDevTools()
-    win.webContents.session.webRequest.onBeforeSendHeaders((details, callback) => {
-      if (!details.webContentsId || details.webContentsId === win.webContents.id) {
-        callback({ cancel: false })
-        return
-      }
-      // const id = details.webContentsId
-
-      if (/http.*\.((mp4)|(m3u8)|(flv)|(mp3)|(mpd)|(wav))(\?|$)/.test(details.url)) {
-        const [_null, _type] = details.url.match(/http.*\.((mp4)|(m3u8)|(flv)|(mp3)|(mpd)|(wav))(\?|$)/)
-
-        if (!details.url.includes('/hls') || details.url.includes('480p') || details.url.includes('live')) {
-          callback({ cancel: true })
-          return
-        }
-        // console.log(details)
-        const _item = {
-          type: _type.toUpperCase(),
-          url: details.url,
-          headers: details.requestHeaders,
-        }
-        const req: Message4Renderer = {
-          data: { browserVideoItem: _item },
-          name: MessageName.findM3u8,
-          type: 'm3u8',
-        }
-        win.webContents.send('reply-msg', req)
-        // mainWindow && mainWindow.webContents.send('message', { browserVideoItem: _item })
-      }
-      callback({ cancel: false })
-    })
   } else {
     win.loadFile(indexHtml)
   }
+  win.webContents.session.webRequest.onBeforeSendHeaders((details, callback) => {
+    if (!details.webContentsId || details.webContentsId === win.webContents.id) {
+      callback({ cancel: false })
+      return
+    }
+    // const id = details.webContentsId
 
+    if (/http.*\.((mp4)|(m3u8)|(flv)|(mp3)|(mpd)|(wav))(\?|$)/.test(details.url)) {
+      const [_null, _type] = details.url.match(/http.*\.((mp4)|(m3u8)|(flv)|(mp3)|(mpd)|(wav))(\?|$)/)
+
+      if (!details.url.includes('/hls') || details.url.includes('480p') || details.url.includes('live')) {
+        callback({ cancel: true })
+        return
+      }
+      // console.log(details)
+      const _item = {
+        type: _type.toUpperCase(),
+        url: details.url,
+        headers: details.requestHeaders,
+      }
+      const req: Message4Renderer = {
+        data: { browserVideoItem: _item },
+        name: MessageName.findM3u8,
+        type: 'm3u8',
+      }
+      win.webContents.send('reply-msg', req)
+      // mainWindow && mainWindow.webContents.send('message', { browserVideoItem: _item })
+    }
+    callback({ cancel: false })
+  })
   // Test actively push message to the Electron-Renderer
   win.webContents.on('did-finish-load', () => {
     win?.webContents.send('main-process-message', new Date().toLocaleString() + ' m3u8-hunter')
@@ -157,6 +156,9 @@ ipcMain.handle('msg', async (event, arg) => {
     } catch (error) {
       console.log('error', error)
     }
+  } else if (name === MessageName.openDir) {
+    shell.openPath(data)
+    // appService.refactorTask()
   }
 })
 app.whenReady().then(createWindow)
