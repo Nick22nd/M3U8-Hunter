@@ -161,6 +161,16 @@ ipcMain.handle('msg', async (event, arg) => {
     // appService.refactorTask()
   }
 })
+export async function updateProgress() {
+  // console.log('updateProgress')
+  const tasks = await appService.getTasks()
+  const newMessage: Message4Renderer = {
+    type: 'm3u8',
+    name: MessageName.getTasks,
+    data: tasks
+  }
+  win?.webContents.send('reply-msg', newMessage)
+}
 app.whenReady().then(createWindow)
 
 app.on('window-all-closed', () => {

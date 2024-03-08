@@ -25,6 +25,9 @@ export interface TaskItem {
     createTime?: number
     title?: string
     directory?: string
+    segmentCount?: number
+    downloadedCount?: number
+    progress?: string
 }
 export interface FindedResource {
     url: string

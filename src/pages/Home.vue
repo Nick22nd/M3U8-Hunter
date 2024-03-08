@@ -1,6 +1,6 @@
 <template>
   <div>
-    <h2>Hello Index</h2>
+    <h2>{{ taskStore.playerTitle }}</h2>
     <el-input v-model="taskStore.playUrl" placeholder="Please input" @change="urlChange" />
     <div ref="videoDom" class="border w-full h-[10rm]" />
   </div>
@@ -16,7 +16,7 @@ const videoDom = ref(null)
 const dplayer = ref(null as DPlayer | null)
 watch(() => taskStore.playUrl, async (newUrl, oldUrl) => {
   console.log('url', newUrl, oldUrl)
-  if (dplayer.value)
+  if (dplayer.value) {
     dplayer.value.switchVideo({
       url: newUrl,
       type: 'customHls',
@@ -30,6 +30,10 @@ watch(() => taskStore.playUrl, async (newUrl, oldUrl) => {
 
       // @ts-ignore
     }, undefined)
+    setTimeout(() => {
+      dplayer.value?.video.play()
+    }, 100)
+  }
 })
 onMounted(() => {
   console.log('mounted')

@@ -21,6 +21,7 @@ export const useFindedMediaStore = defineStore('FindedMedia', () => {
 export const useTaskStore = defineStore('tasks', () => {
     const activeTab = ref('Tasks')
     const playUrl = ref('')
+    const playerTitle = ref('')
     const tasks = ref<TaskItem[]>([])
     const tasksCount = computed(() => tasks.value.length)
     function addTask(task: TaskItem) {
@@ -38,5 +39,5 @@ export const useTaskStore = defineStore('tasks', () => {
         activeTab.value = tab
         console.log('activeTab', activeTab.value, playUrl.value)
     }
-    return { activeTab, tasks, tasksCount, playUrl, addTask, deleteTask, getTasks, switchTab }
+    return { activeTab, tasks, tasksCount, playUrl, playerTitle, addTask, deleteTask, getTasks, switchTab }
 })

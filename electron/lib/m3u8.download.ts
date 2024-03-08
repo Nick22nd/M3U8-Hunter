@@ -6,6 +6,8 @@ import { getAppDataDir } from './m3u8.app'
 import { TaskItem } from '../common.types'
 import async from 'async'
 import log from 'electron-log/main';
+import { jsondb } from './jsondb'
+import { updateProgress } from '../main'
 
 // Optional, initialize the logger for any renderer process
 log.initialize();
@@ -29,6 +31,8 @@ export async function downloadTS(task: TaskItem) {
   streamDuration = segments.reduce((acc, cur) => {
     return acc + cur.duration
   }, 0)
+  const segmentCount = segments.length
+  let downloadedCount = 0
   console.log('streamDuration: ', streamDuration)
 
   if (!fs.existsSync(tsDir)) {
@@ -40,16 +44,39 @@ export async function downloadTS(task: TaskItem) {
   if (key) {
     const url = `${baseURL}${key}`
     console.log('key', url)
-    await download(url, tsDir, {
-      headers: task.headers,
-      // agent: url.startsWith('https') ? proxy.https : proxy.http,
-      // filename: 'key',
-    })
+    try {
+      await download(url, tsDir, {
+        headers: task.headers,
+        // agent: url.startsWith('https') ? proxy.https : proxy.http,
+        // filename: 'key',
+      })
+    } catch (err) {
+      console.error(err)
+      log.error('[download] error key', url, err);
+    }
   }
   // check if segments existed
   const existedSegments = fs.readdirSync(tsDir)
-  console.log('existedSegments', existedSegments)
-
+  console.log('existedSegments', existedSegments.length)
+  let count = 0
+  for (const segment of segments) {
+    const segmentFile = new URL(`${baseURL}${segment.uri}`).pathname.split('/').pop()
+    if (existedSegments.includes(segmentFile)) {
+      downloadedCount++
+      count++
+      // console.log('existed', segmentFile)
+    } else {
+      console.log('not existed', segmentFile)
+    }
+  }
+  await jsondb.update({
+    ...task,
+    segmentCount: segmentCount,
+    downloadedCount: downloadedCount,
+    progress: downloadedCount + '/' + segmentCount,
+  })
+  updateProgress()
+  console.log('count', count)
 
   // console.log('segments', segments)
   // for (const segment of segments) {
@@ -63,13 +90,14 @@ export async function downloadTS(task: TaskItem) {
   //   })
   // }
   async.mapLimit(segments, 5, async function (segment) {
-    console.log('segment', segment)
+    // console.log('segment', segment)
     try {
       const url = `${baseURL}${segment.uri}`
       const segmentFile = new URL(url).pathname.split('/').pop()
       // const name = segment.uri
       if (fs.existsSync(join(tsDir, segmentFile))) {
-        log.info('[download] already existed, skip segment', segment)
+        // log.info('[download] already existed, skip segment', segment)
+        // downloadedCount++
         return 'existed'
       } else {
         let a = await download(url, tsDir, {
@@ -77,6 +105,14 @@ export async function downloadTS(task: TaskItem) {
           // agent: url.startsWith('https') ? proxy.https : proxy.http,
           // filename: name,
         })
+        downloadedCount++
+        await jsondb.update({
+          ...task,
+          segmentCount: segmentCount,
+          downloadedCount: downloadedCount,
+          progress: downloadedCount + '/' + segmentCount,
+        })
+        updateProgress()
         return 'ok'
       }
 

@@ -28,7 +28,7 @@ class JSONDB {
     await this.db.write()
   }
   public async update(task: TaskItem) {
-    console.log('update', task)
+    // console.log('update', task)
     try {
 
       const isExist = this.db.data.tasks.some((item) => item.url === task.url)

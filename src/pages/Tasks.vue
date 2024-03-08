@@ -6,6 +6,7 @@
             <el-table-column property="name" label="Name" width="200" />
 
             <el-table-column property="durationStr" label="Duration" width="100" />
+            <el-table-column property="progress" label="Progress" width="100" />
             <el-table-column property="status" label="Status" width="100">
                 <template #default="scope">
                     <el-tag v-if="scope.row.status === 'downloading'" type="info">{{ scope.row.status }}</el-tag>
@@ -80,6 +81,7 @@ const playTask = (num: number) => {
     console.log('handleClick', num, toRaw(props.tasks[num]))
     const task = toRaw(props.tasks[num])
     taskStore.playUrl = 'http://localhost:3000/' + task.directory?.split('/').pop() + '/' + task.name
+    taskStore.playerTitle = task.title || 'player'
     taskStore.switchTab('Home')
 }
 
