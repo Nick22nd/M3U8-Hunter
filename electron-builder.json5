@@ -14,6 +14,7 @@
     "dist-electron"
   ],
   "mac": {
+    "icon": "public/icon.icns",
     "target": [
       "dmg"
     ],
