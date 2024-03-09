@@ -86,10 +86,10 @@ async function createWindow() {
     if (/http.*\.((mp4)|(m3u8)|(flv)|(mp3)|(mpd)|(wav))(\?|$)/.test(details.url)) {
       const [_null, _type] = details.url.match(/http.*\.((mp4)|(m3u8)|(flv)|(mp3)|(mpd)|(wav))(\?|$)/)
 
-      if (!details.url.includes('/hls') || details.url.includes('480p') || details.url.includes('live')) {
-        callback({ cancel: true })
-        return
-      }
+      // if (!details.url.includes('/hls') || details.url.includes('480p') || details.url.includes('live')) {
+      //   callback({ cancel: true })
+      //   return
+      // }
       // console.log(details)
       const _item = {
         type: _type.toUpperCase(),

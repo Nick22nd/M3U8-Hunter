@@ -92,13 +92,13 @@ export class AppService {
         }
     }
     public async deleteTask(num: number) {
-        const data = await jsondb.getDB()
-        const tasks = data.tasks
-        tasks.splice(num, 1)
         try {
+            const data = await jsondb.getDB()
+            const tasks = data.tasks
+            fsExtra.removeSync(tasks[num].directory)
+            tasks.splice(num, 1)
             jsondb.db.tasks = tasks
             await jsondb.db.write()
-            fsExtra.removeSync(join(this.storagePath, tasks[num].name))
         }
         catch (error) {
             console.log('error', error)
