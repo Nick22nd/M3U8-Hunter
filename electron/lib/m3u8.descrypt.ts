@@ -5,11 +5,8 @@ import * as fs from 'node:fs';
 // const request = require('request');
 import { Parser } from 'm3u8-parser';
 import { TaskItem } from '../common.types';
-function getAppDataDir() {
-    const appDir = join(os.homedir(), 'M3U8Hunter');
-    // fsExtra.ensureDirSync(appDir)
-    return appDir;
-}
+import { getAppDataDir } from './m3u8.app';
+
 // or use ffmpeg command: ffmpeg -allowed_extensions ALL -i 39715.m3u8 -c copy output.ts
 function de(task: TaskItem) {
     const appDir = getAppDataDir();

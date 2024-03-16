@@ -5,8 +5,14 @@
             <el-table-column type="selection" width="55" />
             <el-table-column property="name" label="Name" width="200" />
 
-            <el-table-column property="durationStr" label="Duration" width="100" />
-            <el-table-column property="progress" label="Progress" width="100" />
+            <el-table-column label="Progress" width="100">
+                <template #default="scope">
+                    <div class="flex flex-col justify-center">
+                        <el-text class="mx-1">{{ scope.row.durationStr }}</el-text>
+                        <el-text class="mx-1">{{ scope.row.progress }}</el-text>
+                    </div>
+                </template>
+            </el-table-column>
             <el-table-column property="status" label="Status" width="100">
                 <template #default="scope">
                     <el-tag v-if="scope.row.status === 'downloading'" type="info">{{ scope.row.status }}</el-tag>
@@ -37,6 +43,7 @@
 import { ref, toRaw } from 'vue';
 import { TaskItem, Message4Renderer, MessageName } from '../common.types';
 import { useTaskStore } from '../stores';
+import { ElMessageBox } from 'element-plus';
 const { sendMsg: sendMsgToMainProcess } = window.electron
 interface propsTask {
     tasks: TaskItem[],
@@ -52,12 +59,26 @@ const handleSelectionChange = (val: TaskItem[]) => {
 const deleteItem = (num: number) => {
     console.log('handleClick', multipleSelection.value)
     console.log('handleClick', num)
-    const newMessage: Message4Renderer = {
-        name: MessageName.deleteTask,
-        data: num,
-        type: 'deteteTask'
-    }
-    sendMsgToMainProcess(newMessage)
+    ElMessageBox.confirm(
+        'Are you sure to delete this task and files?',
+        'Warning',
+        {
+            confirmButtonText: 'OK',
+            cancelButtonText: 'Cancel',
+            type: 'warning',
+        })
+        .then(() => {
+            const newMessage: Message4Renderer = {
+                name: MessageName.deleteTask,
+                data: num,
+                type: 'deteteTask'
+            }
+            sendMsgToMainProcess(newMessage)
+        })
+        .catch(() => {
+            console.log('cancel the ELMessageBox')
+            // catch error
+        })
 }
 const startTask = (num: number) => {
     console.log('handleClick', num, toRaw(props.tasks[num]))
@@ -80,7 +101,8 @@ const openDir = (num: number) => {
 const playTask = (num: number) => {
     console.log('handleClick', num, toRaw(props.tasks[num]))
     const task = toRaw(props.tasks[num])
-    taskStore.playUrl = 'http://localhost:3000/' + task.directory?.split('/').pop() + '/' + task.name
+    const fileName = new URL(task.url).pathname.split('/').pop()
+    taskStore.playUrl = 'http://localhost:3000/' + task.directory?.split('/').pop() + '/' + fileName
     taskStore.playerTitle = task.title || 'player'
     taskStore.switchTab('Home')
 }

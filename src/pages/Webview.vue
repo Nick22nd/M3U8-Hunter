@@ -66,6 +66,7 @@ import TopBar from '../components/TopBar.vue'
 import { Message4Renderer, MessageName, TaskItem } from '../common.types';
 import { useStorage } from '@vueuse/core';
 import { useFindedMediaStore } from '../stores/';
+import { ElMessage, ElMessageBox } from 'element-plus';
 const { clearFindResource } = useFindedMediaStore()
 interface MediaMessage {
   headers: {
@@ -160,21 +161,41 @@ async function download(row: MediaMessage) {
   try {
     const rowRaw = toRaw(row)
     console.log('download', url, row)
-    const defaultName = new URL(rowRaw.url).pathname.split('/').pop() || ''
-    const newTask: TaskItem = {
-      status: 'downloading',
-      from: url.value,
-      title: webview.value?.getTitle() || '',
-      name: defaultName,
-      ...rowRaw
-    }
-    const dowloadItem: Message4Renderer = {
-      name: MessageName.downloadM3u8,
-      data: newTask,
-      type: 'download'
-    }
-    const data = await sendMsgToMainProcess(dowloadItem)
-    console.log('[main]:', data)
+
+    ElMessageBox.prompt('Please input your task name', 'Tip', {
+      confirmButtonText: 'OK',
+      cancelButtonText: 'Cancel',
+      // inputPattern:
+      //   /[\w!#$%&'*+/=?^_`{|}~-]+(?:\.[\w!#$%&'*+/=?^_`{|}~-]+)*@(?:[\w](?:[\w-]*[\w])?\.)+[\w](?:[\w-]*[\w])?/,
+      // inputErrorMessage: 'Invalid Email',
+    })
+      .then(async ({ value }) => {
+        ElMessage({
+          type: 'success',
+          message: `Your task name is:${value}`,
+        })
+        const defaultName = new URL(rowRaw.url).pathname.split('/').pop() || ''
+        const newTask: TaskItem = {
+          status: 'downloading',
+          from: url.value,
+          title: webview.value?.getTitle() || '',
+          name: value || defaultName,
+          ...rowRaw
+        }
+        const dowloadItem: Message4Renderer = {
+          name: MessageName.downloadM3u8,
+          data: newTask,
+          type: 'download'
+        }
+        const data = await sendMsgToMainProcess(dowloadItem)
+        console.log('[main]:', data)
+      })
+      .catch(() => {
+        ElMessage({
+          type: 'info',
+          message: 'Input canceled',
+        })
+      })
   }
   catch (error) {
     console.error(error)

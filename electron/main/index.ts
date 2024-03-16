@@ -2,10 +2,12 @@ import { app, BrowserWindow, shell, ipcMain } from 'electron'
 import { release } from 'node:os'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { appService } from '../lib/m3u8.app'
+import { appService, getAppDataDir } from '../lib/m3u8.app'
 import { Message4Renderer, MessageName } from '../common.types'
 import electron from 'vite-plugin-electron'
 import { downloadTS } from '../lib/m3u8.download'
+import { exec } from 'child_process';
+import Logger from 'electron-log'
 
 globalThis.__filename = fileURLToPath(import.meta.url)
 globalThis.__dirname = dirname(__filename)
@@ -119,6 +121,20 @@ async function createWindow() {
   })
   // win.webContents.on('will-navigate', (event, url) => { }) #344
 }
+function runServe() {
+  const appDir = getAppDataDir()
+  exec(`cd ${appDir} && serve -C`, (error, stdout, stderr) => {
+    if (error) {
+      console.error(`exec error: ${error}`);
+      return;
+    }
+    console.log(`stdout: ${stdout}`);
+    console.error(`stderr: ${stderr}`);
+    Logger.info(`stdout: ${stdout}`)
+    Logger.error(`stderr: ${stderr}`)
+  });
+}
+runServe()
 ipcMain.handle('msg', async (event, arg) => {
   console.log('from ipc msg:', arg)
   const { type, name, data } = arg
@@ -160,6 +176,7 @@ ipcMain.handle('msg', async (event, arg) => {
     shell.openPath(data)
     // appService.refactorTask()
   }
+
 })
 export async function updateProgress() {
   // console.log('updateProgress')

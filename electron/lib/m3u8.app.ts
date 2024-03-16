@@ -37,7 +37,10 @@ export class AppService {
         const m3u8Url = videoItem.url
         const headers = videoItem.headers
         const sampleFilename = new URL(m3u8Url).pathname.split('/').pop()
-        targetPath = join(targetPath, new Date().getTime().toString())
+        const defaultName = new Date().getTime().toString()
+        const dirName = videoItem.name || defaultName
+        console.log("@@@dirName", dirName)
+        targetPath = join(targetPath, dirName)
         if (!fs.existsSync(targetPath)) {
             console.log('targetPath', targetPath)
             fs.mkdirSync(targetPath, { recursive: true })
@@ -94,8 +97,10 @@ export class AppService {
     public async deleteTask(num: number) {
         try {
             const data = await jsondb.getDB()
-            const tasks = data.tasks
-            fsExtra.removeSync(tasks[num].directory)
+            const tasks = data.tasks as TaskItem[]
+            if (tasks[num].status === 'downloaded') {
+                fsExtra.removeSync(tasks[num].directory)
+            }
             tasks.splice(num, 1)
             jsondb.db.tasks = tasks
             await jsondb.db.write()
@@ -108,6 +113,7 @@ export class AppService {
         const data = await jsondb.getDB()
         const tasks = data.tasks
         tasks.forEach((item, index) => {
+            // TODO: need change the name
             item.directory = join(this.storagePath, item.name.split('.')[0])
         })
         try {
