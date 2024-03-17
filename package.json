@@ -26,6 +26,7 @@
     "serve": "serve tmp -C"
   },
   "devDependencies": {
+    "@chenfengyuan/vue-qrcode": "^2.0.0",
     "@ffmpeg/ffmpeg": "^0.12.10",
     "@ffmpeg/util": "^0.12.1",
     "@types/dplayer": "^1.25.5",
@@ -49,6 +50,7 @@
     "m3u8-parser": "^7.1.0",
     "pinia": "^2.1.7",
     "portfinder": "^1.0.32",
+    "qrcode": "1",
     "tree-kill": "^1.2.2",
     "typescript": "^5.3.3",
     "unocss": "^0.58.3",
