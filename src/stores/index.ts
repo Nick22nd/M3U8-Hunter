@@ -18,12 +18,22 @@ export const useFindedMediaStore = defineStore('FindedMedia', () => {
 
     return { findedMediaList, findedMediaListCount, clearFindResource, addFindResource }
 })
+type ServerConfig = {
+    ip: string,
+    port: number,
+}
 export const useTaskStore = defineStore('tasks', () => {
     const activeTab = ref('Tasks')
     const playUrl = ref('')
     const playerTitle = ref('')
     const tasks = ref<TaskItem[]>([])
     const tasksCount = computed(() => tasks.value.length)
+    const serverConfig = ref<ServerConfig>({
+        ip: 'localhost',
+        port: 3000
+    })
+    const urlPrefix = computed(() => 'http://' + serverConfig.value.ip + ':' + serverConfig.value.port + '/')
+
     function addTask(task: TaskItem) {
         tasks.value.push(task)
     }
@@ -39,5 +49,5 @@ export const useTaskStore = defineStore('tasks', () => {
         activeTab.value = tab
         console.log('activeTab', activeTab.value, playUrl.value)
     }
-    return { activeTab, tasks, tasksCount, playUrl, playerTitle, addTask, deleteTask, getTasks, switchTab }
+    return { activeTab, tasks, tasksCount, playUrl, urlPrefix, playerTitle, serverConfig, addTask, deleteTask, getTasks, switchTab }
 })

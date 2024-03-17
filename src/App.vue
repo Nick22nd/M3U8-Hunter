@@ -54,6 +54,7 @@ const { sendMsg: sendMsgToMainProcess, onReplyMsg } = window.electron
 onMounted(() => {
   console.log('mounted')
   sendMsgToMainProcess({ name: MessageName.getTasks })
+  sendMsgToMainProcess({ name: MessageName.getServerConfig })
   onReplyMsg((msg: Message4Renderer) => {
     const { name, data, type } = msg
     console.log('onReplyMsg', msg)
@@ -63,6 +64,8 @@ onMounted(() => {
       console.log('findM3u8', data)
       const singleData = data as unknown as MediaMessage
       store.addFindResource(singleData.browserVideoItem)
+    } else if (msg.name === MessageName.getServerConfig) {
+      taskStore.serverConfig = msg.data
     }
   })
 })

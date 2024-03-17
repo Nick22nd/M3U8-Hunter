@@ -28,6 +28,7 @@
                     <el-button link type="primary" size="small" @click="deleteItem(scope.$index)">delete</el-button>
                     <el-button link type="primary" size="small" @click="openDir(scope.$index)">open dir</el-button>
                     <el-button link type="primary" size="small" @click="playTask(scope.$index)">play</el-button>
+                    <el-button link type="primary" size="small" @click="openLink(scope.$index)">link</el-button>
                 </template>
             </el-table-column>
         </el-table>
@@ -102,11 +103,19 @@ const playTask = (num: number) => {
     console.log('handleClick', num, toRaw(props.tasks[num]))
     const task = toRaw(props.tasks[num])
     const fileName = new URL(task.url).pathname.split('/').pop()
-    taskStore.playUrl = 'http://localhost:3000/' + task.directory?.split('/').pop() + '/' + fileName
+    taskStore.playUrl = taskStore.urlPrefix + task.directory?.split('/').pop() + '/' + fileName
     taskStore.playerTitle = task.title || 'player'
     taskStore.switchTab('Home')
 }
 
+const openLink = (num: number) => {
+    console.log('handleClick', num, toRaw(props.tasks[num]))
+    const task = toRaw(props.tasks[num])
+    if (task.from) {
+        navigator.clipboard.writeText(task.from)
+        taskStore.switchTab('Webview')
+    }
+}
 </script>
 
 <style scoped></style>

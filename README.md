@@ -4,11 +4,6 @@
 
 This is a m3u8 downloader based on electron and ffmpeg. It developed for personal use, and it is not guaranteed to be stable. If you have any questions, please submit an issue.
 
-## requirements
-need install the following software:
-- ffmpeg: convert the m3u8 file to mp4 file
-- serve(https://www.npmjs.com/package/serve) or other static server:  serve the directory that included the m3u8 file
-
 ## install
 
 ```shell

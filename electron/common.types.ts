@@ -4,7 +4,8 @@ export enum MessageName {
     findM3u8,
     deleteTask,
     startTask,
-    openDir
+    openDir,
+    getServerConfig,
 }
 export type Message4Renderer = {
     type: string

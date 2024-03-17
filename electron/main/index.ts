@@ -8,6 +8,7 @@ import electron from 'vite-plugin-electron'
 import { downloadTS } from '../lib/m3u8.download'
 import { exec } from 'child_process';
 import Logger from 'electron-log'
+import { runServe, serverConfig } from './server'
 
 globalThis.__filename = fileURLToPath(import.meta.url)
 globalThis.__dirname = dirname(__filename)
@@ -121,20 +122,9 @@ async function createWindow() {
   })
   // win.webContents.on('will-navigate', (event, url) => { }) #344
 }
-function runServe() {
-  const appDir = getAppDataDir()
-  exec(`cd ${appDir} && serve -C`, (error, stdout, stderr) => {
-    if (error) {
-      console.error(`exec error: ${error}`);
-      return;
-    }
-    console.log(`stdout: ${stdout}`);
-    console.error(`stderr: ${stderr}`);
-    Logger.info(`stdout: ${stdout}`)
-    Logger.error(`stderr: ${stderr}`)
-  });
-}
+// run express server
 runServe()
+
 ipcMain.handle('msg', async (event, arg) => {
   console.log('from ipc msg:', arg)
   const { type, name, data } = arg
@@ -175,6 +165,13 @@ ipcMain.handle('msg', async (event, arg) => {
   } else if (name === MessageName.openDir) {
     shell.openPath(data)
     // appService.refactorTask()
+  } else if (name === MessageName.getServerConfig) {
+    const newMessage: Message4Renderer = {
+      type: 'server',
+      name: MessageName.getServerConfig,
+      data: serverConfig
+    }
+    win?.webContents.send('reply-msg', newMessage)
   }
 
 })
