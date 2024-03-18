@@ -20,7 +20,11 @@
                     <el-tag v-else-if="scope.row.status === 'failed'" type="danger">{{ scope.row.status }}</el-tag>
                 </template>
             </el-table-column>
-            <el-table-column property="title" label="Title" width="600" />
+            <el-table-column property="title" label="Title" width="400" class="truncate">
+                <template #default="scope">
+                    <el-text class="truncate" :title="scope.row.title">{{ scope.row.title }}</el-text>
+                </template>
+            </el-table-column>
             <el-table-column fixed="right" label="Operations" width="200">
 
                 <template #default="scope">

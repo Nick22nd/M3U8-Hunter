@@ -32,13 +32,15 @@
       <el-popover placement="right" :width="400" trigger="click">
 
         <template #reference>
-          <el-button class="fixed bottom-0 left-0">
-            Click to activate
-          </el-button>
+          <div class="fixed bottom-0 left-0">
+            <el-badge :value="mediaTasks.length">
+              <el-button>finded m3u8</el-button>
+            </el-badge>
+          </div>
         </template>
         <el-table :data="mediaTasks" height="250">
           <el-table-column type="index" width="50" />
-          <el-table-column width="100" property="type" label="type" />
+          <el-table-column width="60" property="type" label="type" />
           <el-table-column :show-overflow-tooltip="true" class="truncate" width="300" property="url" label="url" />
           <!-- <el-table-column :show-overflow-tooltip="true" class="truncate" width="150" property="headers"
             label="headers" /> -->

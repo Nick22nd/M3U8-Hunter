@@ -5,8 +5,7 @@ import 'element-plus/dist/index.css'
 import ElementPlus from 'element-plus'
 import { router } from './routes/routers'
 import { createPinia } from 'pinia'
-// import VueQrcode from '@chenfengyuan/vue-qrcode';
-import VueQrcode from './components/VueQrcode'
+import VueQrcode from '@chenfengyuan/vue-qrcode';
 // import './style.css'
 import './demos/ipc'
 // If you want use Node.js, the`nodeIntegration` needs to be enabled in the Main process.

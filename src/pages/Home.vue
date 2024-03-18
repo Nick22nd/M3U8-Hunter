@@ -1,12 +1,18 @@
 <template>
   <el-scrollbar height="90vh">
-    <h2>{{ taskStore.playerTitle }}</h2>
-    <el-input v-model="taskStore.playUrl" placeholder="Please input" @change="urlChange" />
-    <div ref="videoDom" class="border w-full"></div>
-    <div class="flex flex-col items-center">
-      <el-switch v-model="showQRCode" class="ml-2" width="30" active-text="show qr code" inactive-text="hide qr code" />
-      <VueQrcode v-show="showQRCode" :value="taskStore.playUrl || taskStore.urlPrefix" @ready="onReady"></VueQrcode>
+    <h2 class="font-sans text-xl truncate" :title="taskStore.playerTitle">{{ taskStore.playerTitle }}</h2>
+    <div class="flex justify-between">
+      <el-input v-model="taskStore.playUrl" placeholder="Please input" @change="urlChange" />
+      <el-popover placement="top-start" :width="200" trigger="hover">
+        <template #reference>
+          <el-button>show QR</el-button>
+        </template>
+        <VueQrcode :value="taskStore.playUrl || taskStore.urlPrefix" @ready="onReady"></VueQrcode>
+
+      </el-popover>
     </div>
+    <div ref="videoDom" class="border w-full"></div>
+
   </el-scrollbar>
 </template>
 
@@ -16,16 +22,34 @@ import DPlayer from 'dplayer'
 import Hls from 'hls.js'
 import { useTaskStore } from '../stores';
 import { useStorage } from '@vueuse/core';
-const playHistory = useStorage('play-history', [], localStorage) as Ref<string[]>
+type PlayHistoryItem = {
+  url: string
+  time: number
+  title: string
+}
+const playHistory = useStorage('play-history', [], localStorage) as Ref<PlayHistoryItem[]>
 const taskStore = useTaskStore()
 const videoDom = ref(null)
 const showQRCode = ref(false)
 const dplayer = ref(null as DPlayer | null)
 watch(() => taskStore.playUrl, async (newUrl, oldUrl) => {
   console.log('url', newUrl, oldUrl)
-  let urlSet = new Set(playHistory.value)
-  urlSet.add(newUrl)
-  playHistory.value = Array.from(urlSet)
+  // record play history
+  let historyItem = playHistory.value.find(item => item.url === oldUrl)
+  if (historyItem) {
+    historyItem.time = dplayer.value?.video.currentTime || 0
+    // move to last position
+    playHistory.value = playHistory.value.filter(item => item.url !== oldUrl)
+    playHistory.value.push(historyItem)
+  } else {
+    historyItem = {
+      url: newUrl,
+      time: dplayer.value?.video.currentTime || 0,
+      title: taskStore.playerTitle
+    }
+    playHistory.value.push(historyItem)
+  }
+
   if (dplayer.value) {
     if (newUrl.startsWith('file://')) {
       dplayer.value.switchVideo({
@@ -48,15 +72,19 @@ watch(() => taskStore.playUrl, async (newUrl, oldUrl) => {
 
       // @ts-ignore
     }, undefined)
+    const lastViewTime = playHistory.value.find(item => item.url === newUrl)?.time || 0
     setTimeout(() => {
       dplayer.value?.video.play()
+      dplayer.value && (dplayer.value.video.currentTime = lastViewTime)
     }, 100)
   }
 })
 onMounted(() => {
   console.log('mounted')
+  // load the last play url
   if (!taskStore.playUrl) {
-    taskStore.playUrl = playHistory.value.at(-1) || ''
+    taskStore.playUrl = playHistory.value.at(-1)?.url || ''
+    taskStore.playerTitle = playHistory.value.at(-1)?.title || 'player'
   }
   const dp = new DPlayer({
     container: videoDom.value,
@@ -72,6 +100,8 @@ onMounted(() => {
         },
       },
     },
+    // chromecast: true,
+    // airplay: true,
     autoplay: false,
   })
   dplayer.value = dp
