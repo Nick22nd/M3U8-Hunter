@@ -10,7 +10,9 @@ import { dialog } from 'electron'
 import { TaskItem } from '../common.types'
 
 export function getAppDataDir() {
-    const appDir = join(os.homedir(), 'M3U8Hunter');
+    const devDir = import.meta.env.VITE_TMPDIR
+    const appDir = devDir ? devDir : join(os.homedir(), 'M3U8Hunter');
+    console.log('appDir', appDir)
     fsExtra.ensureDirSync(appDir)
     return appDir;
 }
@@ -26,7 +28,7 @@ export class AppService {
         return new Date().getTime()
     }
     public async getTasks() {
-        jsondb.init()
+        // jsondb.init()
         const data = await jsondb.getDB()
         // console.log('data', data)
         return data

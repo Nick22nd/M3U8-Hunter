@@ -26,6 +26,19 @@ npm run dev
 npm run build
 ```
 
+## note
+ if app can't generate task, you can check the log file,
+- Mac: view log from ~/Library/Logs/M3U8-Hunter
+
+if it show error like this:
+```shell
+init jsondb error Error: EPERM: operation not permitted, 
+```
+
+you can try to give the app permission to write the file.
+
+Privacy and Security -> Full Disk Access -> select the folder where the app is located -> give the app permission to write the file.
+
 
 ## project
 

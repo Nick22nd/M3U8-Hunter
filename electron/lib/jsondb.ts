@@ -2,6 +2,7 @@ import { JSONFilePreset } from 'lowdb/node'
 import { getAppDataDir } from './m3u8.app'
 import { join } from 'node:path'
 import { TaskItem } from '../common.types'
+import Logger from 'electron-log'
 interface Data {
   tasks: TaskItem[]
 }
@@ -16,7 +17,12 @@ class JSONDB {
   }
 
   async init() {
-    this.db = await JSONFilePreset<Data>(join(getAppDataDir(), 'db.json'), defaultData)
+    try {
+      Logger.info('init jsondb', getAppDataDir())
+      this.db = await JSONFilePreset<Data>(join(getAppDataDir(), 'db.json'), defaultData)
+    } catch (error) {
+      Logger.error('init jsondb error', error)
+    }
   }
   public async removeDuplicate() {
     const tasks = this.db.data.tasks
