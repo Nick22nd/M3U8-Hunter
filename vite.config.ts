@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import fs from 'node:fs'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
@@ -85,5 +86,8 @@ export default defineConfig(({ command }) => {
         '@main': join(__dirname, 'electron'),
       },
     },
+    test: {
+
+    }
   }
 })
