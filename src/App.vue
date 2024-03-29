@@ -57,11 +57,11 @@ onMounted(() => {
   sendMsgToMainProcess({ name: MessageName.getServerConfig })
   onReplyMsg((msg: Message4Renderer) => {
     const { name, data, type } = msg
-    console.log('onReplyMsg', msg)
+    // console.log('onReplyMsg', msg)
     if (msg.name === MessageName.getTasks) {
       tasks.value = msg.data.tasks || []
     } else if (msg.name === MessageName.findM3u8) {
-      console.log('findM3u8', data)
+      // console.log('findM3u8', data)
       const singleData = data as unknown as MediaMessage
       store.addFindResource(singleData.browserVideoItem)
     } else if (msg.name === MessageName.getServerConfig) {

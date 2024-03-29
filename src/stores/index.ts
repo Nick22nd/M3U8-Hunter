@@ -28,6 +28,7 @@ export const useTaskStore = defineStore('tasks', () => {
     const playerTitle = ref('')
     const tasks = ref<TaskItem[]>([])
     const tasksCount = computed(() => tasks.value.length)
+    const task2webviewUrl = ref('');
     const serverConfig = ref<ServerConfig>({
         ip: 'localhost',
         port: 3000
@@ -49,5 +50,5 @@ export const useTaskStore = defineStore('tasks', () => {
         activeTab.value = tab
         console.log('activeTab', activeTab.value, playUrl.value)
     }
-    return { activeTab, tasks, tasksCount, playUrl, urlPrefix, playerTitle, serverConfig, addTask, deleteTask, getTasks, switchTab }
+    return { activeTab, tasks, tasksCount, playUrl, task2webviewUrl, urlPrefix, playerTitle, serverConfig, addTask, deleteTask, getTasks, switchTab }
 })

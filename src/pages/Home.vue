@@ -74,7 +74,7 @@ watch(() => taskStore.playUrl, async (newUrl, oldUrl) => {
     }, undefined)
     const lastViewTime = playHistory.value.find(item => item.url === newUrl)?.time || 0
     setTimeout(() => {
-      dplayer.value?.video.play()
+      // dplayer.value?.video.play()
       dplayer.value && (dplayer.value.video.currentTime = lastViewTime)
     }, 100)
   }

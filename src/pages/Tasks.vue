@@ -1,9 +1,13 @@
 <template>
     <div class="h-full">
-        <el-table ref="multipleTableRef" :data="tasks" style="width: 100%" max-height="95vh"
+        <el-table ref="multipleTableRef" :data="tasks" style="" max-height="95vh"
             @selection-change="handleSelectionChange">
             <el-table-column type="selection" width="55" />
-            <el-table-column property="name" label="Name" width="200" />
+            <el-table-column property="name" label="Name" width="150">
+                <template #default="scope">
+                    <el-text class="truncate" :title="scope.row.name">{{ scope.row.name }}</el-text>
+                </template>
+            </el-table-column>
 
             <el-table-column label="Progress" width="100">
                 <template #default="scope">
@@ -25,14 +29,25 @@
                     <el-text class="truncate" :title="scope.row.title">{{ scope.row.title }}</el-text>
                 </template>
             </el-table-column>
-            <el-table-column fixed="right" label="Operations" width="200">
-
+            <el-table-column fixed="right" label="Operations" width="150">
                 <template #default="scope">
-                    <el-button link type="primary" size="small" @click="startTask(scope.$index)">start</el-button>
-                    <el-button link type="primary" size="small" @click="deleteItem(scope.$index)">delete</el-button>
-                    <el-button link type="primary" size="small" @click="openDir(scope.$index)">open dir</el-button>
-                    <el-button link type="primary" size="small" @click="playTask(scope.$index)">play</el-button>
-                    <el-button link type="primary" size="small" @click="openLink(scope.$index)">link</el-button>
+                    <div class="flex justify-start items-center flex-wrap">
+                        <el-button link type="primary" size="small" @click="startTask(scope.$index)">
+                            <Play title="start" />
+                        </el-button>
+                        <el-button link type="primary" size="small" @click="deleteItem(scope.$index)">
+                            <Trash title="delete" />
+                        </el-button>
+                        <el-button link type="primary" size="small" @click="openDir(scope.$index)">
+                            <FolderClosed title="open dir" />
+                        </el-button>
+                        <el-button link type="primary" size="small" @click="playTask(scope.$index)">
+                            <Youtube title="play" />
+                        </el-button>
+                        <el-button link type="primary" size="small" @click="openLink(scope.$index)">
+                            <Link title="link" />
+                        </el-button>
+                    </div>
                 </template>
             </el-table-column>
         </el-table>
@@ -49,6 +64,7 @@ import { ref, toRaw } from 'vue';
 import { TaskItem, Message4Renderer, MessageName } from '../common.types';
 import { useTaskStore } from '../stores';
 import { ElMessageBox } from 'element-plus';
+import { Youtube, Link, FolderClosed, Trash, Play } from 'lucide-vue-next';
 const { sendMsg: sendMsgToMainProcess } = window.electron
 interface propsTask {
     tasks: TaskItem[],
@@ -117,6 +133,7 @@ const openLink = (num: number) => {
     const task = toRaw(props.tasks[num])
     if (task.from) {
         navigator.clipboard.writeText(task.from)
+        taskStore.task2webviewUrl = task.from
         taskStore.switchTab('Webview')
     }
 }

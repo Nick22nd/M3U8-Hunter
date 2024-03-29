@@ -40,7 +40,7 @@
         </template>
         <el-table :data="mediaTasks" height="250">
           <el-table-column type="index" width="50" />
-          <el-table-column width="60" property="type" label="type" />
+          <el-table-column width="70" property="type" label="type" />
           <el-table-column :show-overflow-tooltip="true" class="truncate" width="300" property="url" label="url" />
           <!-- <el-table-column :show-overflow-tooltip="true" class="truncate" width="150" property="headers"
             label="headers" /> -->
@@ -67,7 +67,7 @@ import { ArrowLeft, ArrowRight, X, RefreshCw, Search } from 'lucide-vue-next'
 import TopBar from '../components/TopBar.vue'
 import { Message4Renderer, MessageName, TaskItem } from '../common.types';
 import { useStorage } from '@vueuse/core';
-import { useFindedMediaStore } from '../stores/';
+import { useFindedMediaStore, useTaskStore } from '../stores/';
 import { ElMessage, ElMessageBox } from 'element-plus';
 const { clearFindResource } = useFindedMediaStore()
 interface MediaMessage {
@@ -108,6 +108,11 @@ const url = ref('')
 const history = useStorage('history', [], localStorage) as Ref<string[]>
 type webviewType = Electron.WebviewTag | null
 const webview = ref(null) as Ref<webviewType>
+const taskStore = useTaskStore()
+watch(() => taskStore.task2webviewUrl, (newUrl, oldUrl) => {
+  console.log('new: ', newUrl, 'old: ', oldUrl)
+  urlChange(newUrl)
+})
 onMounted(() => {
   console.log('mounted', webview.value)
   url.value = history.value.at(-1) || ''
@@ -143,6 +148,7 @@ onMounted(() => {
     inputUrl.value = e.url
     canGoBack.value = webview.value?.canGoBack() || false
     canGoForward.value = webview.value?.canGoForward() || false
+    clearFindResource()
   })
   webview.value?.addEventListener('dom-ready', () => {
     console.log('dom-ready')
