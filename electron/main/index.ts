@@ -9,6 +9,7 @@ import { downloadTS } from '../lib/m3u8.download'
 import { exec } from 'child_process';
 import Logger from 'electron-log'
 import { runServe, serverConfig } from './server'
+import { getDefaultLogDir } from '../lib/utils'
 
 globalThis.__filename = fileURLToPath(import.meta.url)
 globalThis.__dirname = dirname(__filename)
@@ -164,6 +165,7 @@ ipcMain.handle('msg', async (event, arg) => {
     }
   } else if (name === MessageName.openDir) {
     shell.openPath(data)
+
     // appService.refactorTask()
   } else if (name === MessageName.getServerConfig) {
     const newMessage: Message4Renderer = {
@@ -172,6 +174,9 @@ ipcMain.handle('msg', async (event, arg) => {
       data: serverConfig
     }
     win?.webContents.send('reply-msg', newMessage)
+  } else if (name === MessageName.openLog) {
+    const logDir = getDefaultLogDir(app.name)
+    shell.openPath(logDir)
   }
 
 })

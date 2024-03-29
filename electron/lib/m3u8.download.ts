@@ -92,7 +92,12 @@ export async function downloadTS(task: TaskItem) {
   async.mapLimit(segments, 5, async function (segment) {
     // console.log('segment', segment)
     try {
-      const url = `${baseURL}${segment.uri}`
+      let url = ''
+      if (segment.uri.startsWith('http') || segment.uri.startsWith('https')) {
+        url = segment.uri
+      } else {
+        url = `${baseURL}${segment.uri}`
+      }
       const segmentFile = new URL(url).pathname.split('/').pop()
       // const name = segment.uri
       if (fs.existsSync(join(tsDir, segmentFile))) {

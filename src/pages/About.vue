@@ -9,13 +9,10 @@ import { Message4Renderer, MessageName } from '../common.types';
 const { sendMsg: sendMsgToMainProcess } = window.electron
 
 const openDir = () => {
-  const macLog = '~/Library/Logs/M3U8-Hunter'
-  const winLog = '%USERPROFILE%\AppData\Roaming\M3U8-Hunter\logs'
-  const linuxLog = '~/.config/M3U8-Hunter/logs'
   const newMessage: Message4Renderer = {
-    name: MessageName.openDir,
-    data: macLog,
-    type: 'openDir'
+    name: MessageName.openLog,
+    data: '',
+    type: 'openLog'
   }
   sendMsgToMainProcess(newMessage)
 }

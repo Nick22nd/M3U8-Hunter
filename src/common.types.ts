@@ -6,6 +6,7 @@ export enum MessageName {
     startTask,
     openDir,
     getServerConfig,
+    openLog,
 }
 export type Message4Renderer = {
     type: string
