@@ -1,49 +1,58 @@
 <template>
   <el-container class="h-screen">
     <el-tabs v-model:model-value="taskStore.activeTab" @tab-change="changeTabs" type="border-card" tab-position="left"
-      class="w-full">
-      <el-tab-pane label="Home" name="Home">
-        <Home></Home>
-      </el-tab-pane>
-      <el-tab-pane label="About" name="About">
-        <About></About>
-      </el-tab-pane>
-      <el-tab-pane label="Tasks" name="Tasks">
-        <Tasks :tasks="tasks"></Tasks>
-      </el-tab-pane>
-      <el-tab-pane label="WebviewVue" name="Webview">
-        <WebviewVue :mediaTasks="store.findedMediaList"></WebviewVue>
+      class="w-full demo-tabs">
+      <el-tab-pane v-for="tab of tabs" :label="tab.label" :name="tab.label">
+        <template #label>
+          <div class="flex justify-between items-center w-20">
+            <el-icon class="mr-3">
+              <component :is="tab.icon"></component>
+            </el-icon>
+            <span class="flex-1 text-left">{{ tab.label }}</span>
+          </div>
+        </template>
+        <component :is="tab.component"></component>
       </el-tab-pane>
     </el-tabs>
   </el-container>
 </template>
 <script setup lang="ts">
-import SideBar from './components/SideBar.vue'
 import { onMounted, ref } from 'vue'
 import About from './pages/About.vue';
 import Home from './pages/Home.vue';
 import Tasks from './pages/Tasks.vue';
 import WebviewVue from './pages/Webview.vue';
-import { TaskItem, MediaMessage, Message4Renderer, MessageName } from './common.types';
+import { TaskItem, MediaMessage, Message4Renderer, MessageName, TabList } from './common.types';
 import { TabPaneName } from 'element-plus';
 import { useFindedMediaStore, useTaskStore } from './stores/';
+import Setting from './pages/Setting.vue';
+import { Film, ListChecks, Settings, Globe, Info } from 'lucide-vue-next';
 const tabs = [
   {
-    label: 'Home',
-    component: Home
+    label: 'Tasks',
+    component: Tasks,
+    icon: ListChecks
+  },
+  {
+    label: 'Player',
+    component: Home,
+    icon: Film
+  },
+  {
+    label: 'Explore',
+    component: WebviewVue,
+    icon: Globe
+  },
+  {
+    label: 'Setting',
+    component: Setting,
+    icon: Settings
   },
   {
     label: 'About',
-    component: About
+    component: About,
+    icon: Info
   },
-  {
-    label: 'Tasks',
-    component: Tasks
-  },
-  {
-    label: 'WebviewVue',
-    component: WebviewVue
-  }
 ]
 const taskStore = useTaskStore()
 const tabPosition = ref('left')
@@ -59,7 +68,7 @@ onMounted(() => {
     const { name, data, type } = msg
     // console.log('onReplyMsg', msg)
     if (msg.name === MessageName.getTasks) {
-      tasks.value = msg.data.tasks || []
+      taskStore.tasks = msg.data.tasks || []
     } else if (msg.name === MessageName.findM3u8) {
       // console.log('findM3u8', data)
       const singleData = data as unknown as MediaMessage
@@ -71,7 +80,7 @@ onMounted(() => {
 })
 const changeTabs = (name: TabPaneName) => {
   console.log('changeTabs', name)
-  if (name === 'Tasks') {
+  if (name === TabList.Tasks) {
     sendMsgToMainProcess({ name: MessageName.getTasks })
   }
 }
@@ -115,17 +124,15 @@ body.dark {
   justify-content: center;
 }
 
-/* .demo-tabs>.el-tabs__content {
+.demo-tabs>.el-tabs__content {
   padding: 32px;
-color: #6b778c;
-font-size: 32px;
-font-weight: 600;
+  /* color: #6b778c; */
+  /* font-size: 32px; */
+  font-weight: 600;
 }
 
 .el-tabs--right .el-tabs__content,
 .el-tabs--left .el-tabs__content {
   height: 100%;
 }
-
-*/
 </style>

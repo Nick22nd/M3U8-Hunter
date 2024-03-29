@@ -1,6 +1,6 @@
 <template>
     <div class="h-full">
-        <el-table ref="multipleTableRef" :data="tasks" style="" max-height="95vh"
+        <el-table ref="multipleTableRef" :data="taskStore.tasks" style="" max-height="95vh"
             @selection-change="handleSelectionChange">
             <el-table-column type="selection" width="55" />
             <el-table-column property="name" label="Name" width="150">
@@ -61,16 +61,13 @@
 
 <script setup lang="ts">
 import { ref, toRaw } from 'vue';
-import { TaskItem, Message4Renderer, MessageName } from '../common.types';
+import { TaskItem, Message4Renderer, MessageName, TabList } from '../common.types';
 import { useTaskStore } from '../stores';
 import { ElMessageBox } from 'element-plus';
 import { Youtube, Link, FolderClosed, Trash, Play } from 'lucide-vue-next';
 const { sendMsg: sendMsgToMainProcess } = window.electron
-interface propsTask {
-    tasks: TaskItem[],
-}
+
 const taskStore = useTaskStore()
-const props = defineProps<propsTask>()
 const multipleSelection = ref<TaskItem[]>([])
 const handleSelectionChange = (val: TaskItem[]) => {
     multipleSelection.value = val
@@ -102,39 +99,39 @@ const deleteItem = (num: number) => {
         })
 }
 const startTask = (num: number) => {
-    console.log('handleClick', num, toRaw(props.tasks[num]))
+    console.log('handleClick', num, toRaw(taskStore.tasks[num]))
     const newMessage: Message4Renderer = {
         name: MessageName.startTask,
-        data: toRaw(props.tasks[num]),
+        data: toRaw(taskStore.tasks[num]),
         type: 'download'
     }
     sendMsgToMainProcess(newMessage)
 }
 const openDir = (num: number) => {
-    console.log('handleClick', num, toRaw(props.tasks[num]))
+    console.log('handleClick', num, toRaw(taskStore.tasks[num]))
     const newMessage: Message4Renderer = {
         name: MessageName.openDir,
-        data: toRaw(props.tasks[num]).directory,
+        data: toRaw(taskStore.tasks[num]).directory,
         type: 'openDir'
     }
     sendMsgToMainProcess(newMessage)
 }
 const playTask = (num: number) => {
-    console.log('handleClick', num, toRaw(props.tasks[num]))
-    const task = toRaw(props.tasks[num])
+    console.log('handleClick', num, toRaw(taskStore.tasks[num]))
+    const task = toRaw(taskStore.tasks[num])
     const fileName = new URL(task.url).pathname.split('/').pop()
     taskStore.playUrl = taskStore.urlPrefix + task.directory?.split('/').pop() + '/' + fileName
     taskStore.playerTitle = task.title || 'player'
-    taskStore.switchTab('Home')
+    taskStore.switchTab(TabList.Home)
 }
 
 const openLink = (num: number) => {
-    console.log('handleClick', num, toRaw(props.tasks[num]))
-    const task = toRaw(props.tasks[num])
+    console.log('handleClick', num, toRaw(taskStore.tasks[num]))
+    const task = toRaw(taskStore.tasks[num])
     if (task.from) {
         navigator.clipboard.writeText(task.from)
         taskStore.task2webviewUrl = task.from
-        taskStore.switchTab('Webview')
+        taskStore.switchTab(TabList.Explore)
     }
 }
 </script>

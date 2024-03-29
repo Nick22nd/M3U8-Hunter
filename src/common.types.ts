@@ -47,3 +47,11 @@ export interface MediaMessage {
         url: string
     }
 }
+
+export const TabList = {
+    Home: 'Player',
+    Tasks: 'Tasks',
+    Explore: 'Explore',
+    Setting: 'Setting',
+    About: 'About'
+}

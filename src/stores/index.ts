@@ -1,6 +1,6 @@
 import { defineStore } from "pinia"
 import { computed, ref } from "vue"
-import { FindedResource, TaskItem } from "../common.types"
+import { FindedResource, TaskItem, TabList } from "../common.types"
 
 export const useFindedMediaStore = defineStore('FindedMedia', () => {
     const findedMediaList = ref<FindedResource[]>([])
@@ -22,6 +22,7 @@ type ServerConfig = {
     ip: string,
     port: number,
 }
+type TabName = (typeof TabList)[keyof typeof TabList]
 export const useTaskStore = defineStore('tasks', () => {
     const activeTab = ref('Tasks')
     const playUrl = ref('')
@@ -46,7 +47,7 @@ export const useTaskStore = defineStore('tasks', () => {
     function getTasks() {
         return tasks.value
     }
-    function switchTab(tab: string) {
+    function switchTab(tab: TabName) {
         activeTab.value = tab
         console.log('activeTab', activeTab.value, playUrl.value)
     }

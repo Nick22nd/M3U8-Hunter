@@ -59,6 +59,7 @@ export async function downloadTS(task: TaskItem) {
   const existedSegments = fs.readdirSync(tsDir)
   console.log('existedSegments', existedSegments.length)
   let count = 0
+  let needToDownloadCount = 0
   for (const segment of segments) {
     const segmentFile = new URL(`${baseURL}${segment.uri}`).pathname.split('/').pop()
     if (existedSegments.includes(segmentFile)) {
@@ -66,6 +67,7 @@ export async function downloadTS(task: TaskItem) {
       count++
       // console.log('existed', segmentFile)
     } else {
+      needToDownloadCount++
       console.log('not existed', segmentFile)
     }
   }

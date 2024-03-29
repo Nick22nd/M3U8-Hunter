@@ -33,12 +33,12 @@
 
         <template #reference>
           <div class="fixed bottom-0 left-0">
-            <el-badge :value="mediaTasks.length">
+            <el-badge :value="findedMediaStore.findedMediaList.length">
               <el-button>finded m3u8</el-button>
             </el-badge>
           </div>
         </template>
-        <el-table :data="mediaTasks" height="250">
+        <el-table :data="findedMediaStore.findedMediaList" height="250">
           <el-table-column type="index" width="50" />
           <el-table-column width="70" property="type" label="type" />
           <el-table-column :show-overflow-tooltip="true" class="truncate" width="300" property="url" label="url" />
@@ -70,6 +70,7 @@ import { useStorage } from '@vueuse/core';
 import { useFindedMediaStore, useTaskStore } from '../stores/';
 import { ElMessage, ElMessageBox } from 'element-plus';
 const { clearFindResource } = useFindedMediaStore()
+const findedMediaStore = useFindedMediaStore()
 interface MediaMessage {
   headers: {
     [key: string]: string
@@ -77,11 +78,6 @@ interface MediaMessage {
   type: string
   url: string
 }
-interface propsTask {
-  mediaTasks: MediaMessage[]
-}
-
-defineProps<propsTask>()
 const inputUrl = ref('')
 const options = ref([])
 function openDevTool() {
