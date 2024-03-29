@@ -5,6 +5,7 @@ import vue from '@vitejs/plugin-vue'
 import electron from 'vite-plugin-electron/simple'
 import pkg from './package.json'
 import UnoCSS from 'unocss/vite'
+import AutoImport from 'unplugin-auto-import/vite'
 import { join } from 'path';
 // https://vitejs.dev/config/
 export default defineConfig(({ command }) => {
@@ -70,6 +71,7 @@ export default defineConfig(({ command }) => {
         // See 👉 https://github.com/electron-vite/vite-plugin-electron-renderer
         renderer: {},
       }),
+      AutoImport({ imports: ['vue'], dts: './src/auto-imports.d.ts', }),
       UnoCSS()
     ],
     server: process.env.VSCODE_DEBUG && (() => {

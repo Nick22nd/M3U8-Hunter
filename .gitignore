@@ -31,3 +31,4 @@ yarn.lock
 
 # custom
 tmp/*
+auto-imports.d.ts
