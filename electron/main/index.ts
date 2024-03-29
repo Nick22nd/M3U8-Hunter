@@ -177,6 +177,9 @@ ipcMain.handle('msg', async (event, arg) => {
   } else if (name === MessageName.openLog) {
     const logDir = getDefaultLogDir(app.name)
     shell.openPath(logDir)
+  } else if (name === MessageName.openUrl) {
+    console.log('openUrl', data)
+    shell.openExternal(data)
   }
 
 })

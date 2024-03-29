@@ -1,6 +1,6 @@
 <template>
     <div class="h-full">
-        <el-table ref="multipleTableRef" :data="taskStore.tasks" style="" max-height="95vh"
+        <el-table ref="multipleTableRef" :data="filterTableData" style="" max-height="95vh"
             @selection-change="handleSelectionChange">
             <el-table-column type="selection" width="55" />
             <el-table-column property="name" label="Name" width="150">
@@ -30,6 +30,9 @@
                 </template>
             </el-table-column>
             <el-table-column fixed="right" label="Operations" width="150">
+                <template #header>
+                    <el-input v-model="search" size="small" placeholder="Type to search" />
+                </template>
                 <template #default="scope">
                     <div class="flex justify-start items-center flex-wrap">
                         <el-button link type="primary" size="small" @click="startTask(scope.$index)">
@@ -64,11 +67,26 @@ import { ref, toRaw } from 'vue';
 import { TaskItem, Message4Renderer, MessageName, TabList } from '../common.types';
 import { useTaskStore } from '../stores';
 import { ElMessageBox } from 'element-plus';
-import { Youtube, Link, FolderClosed, Trash, Play } from 'lucide-vue-next';
+import { Youtube, Link, FolderClosed, Trash, Play, ImageOff } from 'lucide-vue-next';
 const { sendMsg: sendMsgToMainProcess } = window.electron
 
 const taskStore = useTaskStore()
 const multipleSelection = ref<TaskItem[]>([])
+const search = ref('')
+
+const filterTableData = computed(() =>
+    taskStore.tasks.filter(
+        (data) => {
+            if (search.value && !!data.name) {
+                return data.name.toLowerCase().includes(search.value.toLowerCase())
+                    || (data.from && data.from.toLocaleLowerCase().includes(search.value.toLowerCase()))
+            } else {
+                return true
+            }
+        }
+    )
+)
+
 const handleSelectionChange = (val: TaskItem[]) => {
     multipleSelection.value = val
     console.log('multipleSelection', val)

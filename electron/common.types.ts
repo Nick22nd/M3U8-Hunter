@@ -7,6 +7,7 @@ export enum MessageName {
     openDir,
     getServerConfig,
     openLog,
+    openUrl,
 }
 export type Message4Renderer = {
     type: string

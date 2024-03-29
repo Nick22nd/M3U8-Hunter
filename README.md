@@ -39,6 +39,12 @@ you can try to give the app permission to write the file.
 
 Privacy and Security -> Full Disk Access -> select the folder where the app is located -> give the app permission to write the file.
 
+## TODO
+
+- [ ] support m3u8 file that included play list
+- [ ] improve ui
+- [ ] add tutorial
+
 
 ## project
 
