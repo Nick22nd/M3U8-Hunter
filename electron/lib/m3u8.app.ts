@@ -8,9 +8,12 @@ import fsExtra from 'fs-extra'
 import { jsondb } from './jsondb'
 import { dialog } from 'electron'
 import { TaskItem } from '../common.types'
+import { downloadTS } from './m3u8.download'
+import Logger from 'electron-log'
+import { showPlaylistTaskDialog } from '../main'
 
 export function getAppDataDir() {
-    const devDir = import.meta.env.VITE_TMPDIR
+    const devDir = import.meta.env && import.meta.env.VITE_TMPDIR
     const appDir = devDir ? devDir : join(os.homedir(), 'M3U8Hunter');
     console.log('appDir', appDir)
     fsExtra.ensureDirSync(appDir)
@@ -51,26 +54,10 @@ export class AppService {
         try {
             if (fs.existsSync(join(targetPath, sampleFilename))) {
                 console.log('file exists')
-                const duration = analyseM3u8File(targetPath, sampleFilename)
-                await jsondb.update({
-                    ...videoItem,
-                    url: m3u8Url,
-                    headers: headers,
-                    status: 'downloaded',
-                    duration,
-                    durationStr: timeFormat(duration),
-                    createTime: new Date().getTime(),
-                    directory: targetPath,
-                })
-            }
-            else {
-                console.log('start download')
-
-                await downloadFile(m3u8Url, targetPath, headers)
-                console.log('download finished')
-                const duration = await analyseM3u8File(targetPath, sampleFilename)
-                try {
-                    await jsondb.update({
+                const result = analyseM3u8File(targetPath, sampleFilename)
+                if (result.type === 'segments') {
+                    const duration = result.duration
+                    const newTask: TaskItem = {
                         ...videoItem,
                         url: m3u8Url,
                         headers: headers,
@@ -79,7 +66,42 @@ export class AppService {
                         durationStr: timeFormat(duration),
                         createTime: new Date().getTime(),
                         directory: targetPath,
-                    })
+                    }
+                    await jsondb.update(newTask)
+                    try {
+                        await downloadTS(newTask)
+                    } catch (error) {
+                        Logger.error('downloadTS in file exists', error)
+                    }
+                } else {
+                    // playlist 
+                    showPlaylistTaskDialog(result.data, videoItem)
+                }
+            }
+            else {
+                console.log('start download')
+                try {
+                    await downloadFile(m3u8Url, targetPath, headers)
+                } catch (error) {
+                    Logger.error('download m3u8 error', error)
+                }
+                console.log('download finished')
+
+                const result = await analyseM3u8File(targetPath, sampleFilename)
+                // segments or playlists
+                if (result.type === 'segments') {
+                    const duration = result.duration
+                    let newTask: TaskItem = {
+                        ...videoItem,
+                        url: m3u8Url,
+                        headers: headers,
+                        status: 'downloaded',
+                        duration,
+                        durationStr: timeFormat(duration),
+                        createTime: new Date().getTime(),
+                        directory: targetPath,
+                    }
+                    await jsondb.update(newTask)
                     const options: Electron.MessageBoxOptions = {
                         type: 'info',
                         title: 'Application Menu Demo',
@@ -87,8 +109,16 @@ export class AppService {
                         message: 'name: ' + sampleFilename + '\ntime durattion ' + timeFormat(duration) + 's',
                     }
                     dialog.showMessageBox(options)
-                } catch (error) {
-                    console.log('error', error)
+                        .then(async (val) => {
+                            try {
+                                await downloadTS(newTask)
+                            } catch (error) {
+                                Logger.error('downloadTS', error)
+                            }
+                        }).catch(Logger.error);
+                } else {
+                    // playlist 
+                    showPlaylistTaskDialog(result.data, videoItem)
                 }
             }
         }
@@ -165,6 +195,12 @@ function timeFormat(streamDuration: number) {
     }).join(':')
     return str
 }
+/**
+ * analyze the M3U8 file return segments or playlists
+ * @param targetPath file directory
+ * @param sampleFilename file name
+ * @returns 
+ */
 function analyseM3u8File(targetPath: string, sampleFilename: string) {
     const str = fs.readFileSync(join(targetPath, sampleFilename), 'utf8')
     const parser = new Parser()
@@ -177,7 +213,13 @@ function analyseM3u8File(targetPath: string, sampleFilename: string) {
     }, 0)
     console.log('streamDuration: ', streamDuration, timeFormat(streamDuration))
     // console.log(parser)
-    return streamDuration
+
+    // playlist
+    if (parser.manifest.playlists && parser.manifest.playlists.length !== 0) {
+        console.log(parser.manifest.playlists)
+        return { type: 'playlist', data: parser.manifest.playlists, duration: streamDuration }
+    }
+    return { type: 'segments', data: segments, duration: streamDuration }
 }
 
 export const appService = new AppService()

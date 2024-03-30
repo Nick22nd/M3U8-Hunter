@@ -14,6 +14,20 @@
         <component :is="tab.component"></component>
       </el-tab-pane>
     </el-tabs>
+    <el-dialog v-model="centerDialogVisible" title="Warning" width="500" center>
+      <span>Task Name: {{ waitingTask?.name }}</span>
+      <el-select v-model="selectedUrl" placeholder="Please select a zone">
+        <el-option v-for="item of playlists" :label="getPlaylistLabel(item)" :value="item.uri" />
+      </el-select>
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="centerDialogVisible = false">Cancel</el-button>
+          <el-button type="primary" @click="dowloadTS">
+            Confirm
+          </el-button>
+        </div>
+      </template>
+    </el-dialog>
   </el-container>
 </template>
 <script setup lang="ts">
@@ -56,9 +70,49 @@ const tabs = [
 ]
 const taskStore = useTaskStore()
 const tabPosition = ref('left')
+const centerDialogVisible = ref(false)
+type PlayList = {
+  attributes: {
+    CODECS?: string,
+    'FRAME-RATE'?: number,
+    RESOLUTION?: {
+      width: number
+      height: number
+    },
+    resolution?: {
+      width: number
+      height: number
+    },
+    BANDWIDTH?: number,
+    bandwidth?: number,
+    'PROGRAM-ID'?: number
+  },
+  uri: string
+  timeline: number
+}
+const playlists = ref<PlayList[]>([])
+const selectedUrl = ref('')
+const waitingTask = ref<TaskItem>()
 
 const tasks = ref<TaskItem[]>([])
 const store = useFindedMediaStore()
+const getPlaylistLabel = (playlist: PlayList) => {
+  if (!playlist || !playlist.attributes) return '';
+  const attr = playlist.attributes;
+  if (attr.BANDWIDTH) {
+    return `BANDWIDTH - ${attr.BANDWIDTH}`;
+  }
+  if (attr.bandwidth) {
+    return `BANDWIDTH - ${attr.BANDWIDTH}`;
+  }
+  if (attr.RESOLUTION) {
+    return `RESOLUTION - ${attr.RESOLUTION.width}x${attr.RESOLUTION.height}`;
+  }
+  if (attr.resolution) {
+    return `RESOLUTION - ${attr.resolution.width}x${attr.resolution.height}`;
+  }
+  return 'URI - ' + playlist.uri;
+}
 const { sendMsg: sendMsgToMainProcess, onReplyMsg } = window.electron
 onMounted(() => {
   console.log('mounted')
@@ -75,6 +129,10 @@ onMounted(() => {
       store.addFindResource(singleData.browserVideoItem)
     } else if (msg.name === MessageName.getServerConfig) {
       taskStore.serverConfig = msg.data
+    } else if (msg.name === MessageName.getPlaylist) {
+      playlists.value = msg.data.playlists
+      waitingTask.value = msg.data.task
+      centerDialogVisible.value = true
     }
   })
 })
@@ -83,6 +141,34 @@ const changeTabs = (name: TabPaneName) => {
   if (name === TabList.Tasks) {
     sendMsgToMainProcess({ name: MessageName.getTasks })
   }
+}
+const dowloadTS = async () => {
+  centerDialogVisible.value = false
+  if (waitingTask.value) {
+    if (selectedUrl.value.startsWith('http')) {
+      waitingTask.value.url = selectedUrl.value
+    } else {
+      const url = waitingTask.value.url;
+      let rawURL = new URL(url)
+      let listURI = rawURL.pathname.split('/').pop()
+      let baserawURL = url.substring(0, url.indexOf(listURI ?? ''))
+      waitingTask.value.url = `${baserawURL}${selectedUrl.value}`
+    }
+  } else {
+    console.error('waitingTask is undefined');
+    return;
+  }
+  const oldTask = toRaw(waitingTask.value)
+  const newTask: TaskItem = {
+    ...oldTask,
+  }
+  console.log('dowts,', newTask, oldTask)
+  const dowloadItem: Message4Renderer = {
+    name: MessageName.downloadM3u8,
+    data: newTask,
+    type: 'download'
+  }
+  const data = await sendMsgToMainProcess(dowloadItem)
 }
 </script>
 

@@ -3,7 +3,7 @@ import { release } from 'node:os'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { appService, getAppDataDir } from '../lib/m3u8.app'
-import { Message4Renderer, MessageName } from '../common.types'
+import { Message4Renderer, MessageName, TaskItem } from '../common.types'
 import electron from 'vite-plugin-electron'
 import { downloadTS } from '../lib/m3u8.download'
 import { exec } from 'child_process';
@@ -190,6 +190,17 @@ export async function updateProgress() {
     type: 'm3u8',
     name: MessageName.getTasks,
     data: tasks
+  }
+  win?.webContents.send('reply-msg', newMessage)
+}
+export async function showPlaylistTaskDialog(playlists: any, task: TaskItem) {
+  const newMessage: Message4Renderer = {
+    type: 'm3u8',
+    name: MessageName.getPlaylist,
+    data: {
+      playlists,
+      task
+    }
   }
   win?.webContents.send('reply-msg', newMessage)
 }

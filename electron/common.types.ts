@@ -8,6 +8,7 @@ export enum MessageName {
     getServerConfig,
     openLog,
     openUrl,
+    getPlaylist,
 }
 export type Message4Renderer = {
     type: string

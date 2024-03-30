@@ -35,20 +35,23 @@
                 </template>
                 <template #default="scope">
                     <div class="flex justify-start items-center flex-wrap">
-                        <el-button link type="primary" size="small" @click="startTask(scope.$index)">
+                        <el-button link type="primary" size="small" @click="startTask(scope.row)">
                             <Play title="start" />
                         </el-button>
-                        <el-button link type="primary" size="small" @click="deleteItem(scope.$index)">
+                        <el-button link type="primary" size="small" @click="deleteItem(scope.row)">
                             <Trash title="delete" />
                         </el-button>
-                        <el-button link type="primary" size="small" @click="openDir(scope.$index)">
+                        <el-button link type="primary" size="small" @click="openDir(scope.row)">
                             <FolderClosed title="open dir" />
                         </el-button>
-                        <el-button link type="primary" size="small" @click="playTask(scope.$index)">
+                        <el-button link type="primary" size="small" @click="playTask(scope.row)">
                             <Youtube title="play" />
                         </el-button>
-                        <el-button link type="primary" size="small" @click="openLink(scope.$index)">
+                        <el-button link type="primary" size="small" @click="openLink(scope.row)">
                             <Link title="link" />
+                        </el-button>
+                        <el-button link type="primary" size="small" @click="restart(scope.row)">
+                            <RefreshCw title="restart" />
                         </el-button>
                     </div>
                 </template>
@@ -67,7 +70,7 @@ import { ref, toRaw } from 'vue';
 import { TaskItem, Message4Renderer, MessageName, TabList } from '../common.types';
 import { useTaskStore } from '../stores';
 import { ElMessageBox } from 'element-plus';
-import { Youtube, Link, FolderClosed, Trash, Play, ImageOff } from 'lucide-vue-next';
+import { Youtube, Link, FolderClosed, Trash, Play, RefreshCw } from 'lucide-vue-next';
 const { sendMsg: sendMsgToMainProcess } = window.electron
 
 const taskStore = useTaskStore()
@@ -92,9 +95,11 @@ const handleSelectionChange = (val: TaskItem[]) => {
     console.log('multipleSelection', val)
 }
 
-const deleteItem = (num: number) => {
+const deleteItem = (task: TaskItem) => {
     console.log('handleClick', multipleSelection.value)
-    console.log('handleClick', num)
+    console.log('handleClick', toRaw(task))
+
+    const num = taskStore.tasks.findIndex(item => item.url === task.url)
     ElMessageBox.confirm(
         'Are you sure to delete this task and files?',
         'Warning',
@@ -116,41 +121,57 @@ const deleteItem = (num: number) => {
             // catch error
         })
 }
-const startTask = (num: number) => {
-    console.log('handleClick', num, toRaw(taskStore.tasks[num]))
+const startTask = (task: TaskItem) => {
+    console.log('handleClick', toRaw(task))
+    const newTask = {
+        ...toRaw(task)
+    }
     const newMessage: Message4Renderer = {
         name: MessageName.startTask,
-        data: toRaw(taskStore.tasks[num]),
+        data: newTask,
         type: 'download'
     }
     sendMsgToMainProcess(newMessage)
 }
-const openDir = (num: number) => {
-    console.log('handleClick', num, toRaw(taskStore.tasks[num]))
+const openDir = (task: TaskItem) => {
+    console.log('handleClick', toRaw(task))
+
     const newMessage: Message4Renderer = {
         name: MessageName.openDir,
-        data: toRaw(taskStore.tasks[num]).directory,
+        data: task.directory,
         type: 'openDir'
     }
     sendMsgToMainProcess(newMessage)
 }
-const playTask = (num: number) => {
-    console.log('handleClick', num, toRaw(taskStore.tasks[num]))
-    const task = toRaw(taskStore.tasks[num])
+const playTask = (task: TaskItem) => {
+    console.log('handleClick', toRaw(task))
+
     const fileName = new URL(task.url).pathname.split('/').pop()
     taskStore.playUrl = taskStore.urlPrefix + task.directory?.split('/').pop() + '/' + fileName
     taskStore.playerTitle = task.title || 'player'
     taskStore.switchTab(TabList.Home)
 }
 
-const openLink = (num: number) => {
-    console.log('handleClick', num, toRaw(taskStore.tasks[num]))
-    const task = toRaw(taskStore.tasks[num])
+const openLink = (task: TaskItem) => {
+    console.log('handleClick', toRaw(task))
+
     if (task.from) {
         navigator.clipboard.writeText(task.from)
         taskStore.task2webviewUrl = task.from
         taskStore.switchTab(TabList.Explore)
     }
+}
+const restart = (task: TaskItem) => {
+    console.log('handleClick', toRaw(task))
+    const newTask = {
+        ...toRaw(task)
+    }
+    const newMessage: Message4Renderer = {
+        name: MessageName.downloadM3u8,
+        data: newTask,
+        type: 'download'
+    }
+    sendMsgToMainProcess(newMessage)
 }
 </script>
 
