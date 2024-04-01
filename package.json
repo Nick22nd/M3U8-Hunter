@@ -54,7 +54,7 @@
     "portfinder": "^1.0.32",
     "qrcode": "1",
     "tree-kill": "^1.2.2",
-    "typescript": "^5.3.3",
+    "typescript": "^5.4.3",
     "unocss": "^0.58.3",
     "unplugin-auto-import": "^0.17.5",
     "vite": "^5.0.10",
