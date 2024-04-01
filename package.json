@@ -31,7 +31,7 @@
     "@ffmpeg/ffmpeg": "^0.12.10",
     "@ffmpeg/util": "^0.12.1",
     "@types/dplayer": "^1.25.5",
-    "@unocss/preset-uno": "^0.58.3",
+    "@unocss/preset-uno": "^0.58.9",
     "@vitejs/plugin-vue": "^5.0.1",
     "@vitest/ui": "^1.4.0",
     "@vueuse/core": "^10.9.0",
