@@ -51,8 +51,8 @@ devDependencies:
     specifier: ^5.1.1
     version: 5.1.1
   element-plus:
-    specifier: ^2.5.1
-    version: 2.5.1(vue@3.4.13)
+    specifier: ^2.6.3
+    version: 2.6.3(vue@3.4.13)
   express:
     specifier: ^4.18.3
     version: 4.18.3
@@ -2645,8 +2645,8 @@ packages:
       - supports-color
     dev: true
 
-  /element-plus@2.5.1(vue@3.4.13):
-    resolution: {integrity: sha512-ylX9h2U125/nesPlLWgfPkI1rID9EiGROlgf0QkzBUjx+/d4w/YqS+IqZZZC5yvQPhKYu9aMDqEBzOurwn4Cnw==}
+  /element-plus@2.6.3(vue@3.4.13):
+    resolution: {integrity: sha512-U4L/mr+1r+EmAUYUHrs0V/8hHMdBGP07rPymSC72LZCN4jK1UwygQYICegTQ5us4mxeqBvW6wfoEfo003fwCqw==}
     peerDependencies:
       vue: ^3.2.0
     dependencies:
