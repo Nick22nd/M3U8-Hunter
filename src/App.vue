@@ -28,6 +28,10 @@
         </div>
       </template>
     </el-dialog>
+    <div class="fixed bottom-0 left-0 m-8">
+      <el-switch inline-prompt v-model="isDark" @change="toggleDark(isDark)" :active-action-icon="Moon"
+        :inactive-action-icon="Sunny" />
+    </div>
   </el-container>
 </template>
 <script setup lang="ts">
@@ -41,6 +45,8 @@ import { TabPaneName } from 'element-plus';
 import { useFindedMediaStore, useTaskStore } from './stores/';
 import Setting from './pages/Setting.vue';
 import { Film, ListChecks, Settings, Globe, Info } from 'lucide-vue-next';
+import { useDark, useToggle } from '@vueuse/core';
+import { Moon, Sunny } from '@element-plus/icons-vue'
 const tabs = [
   {
     label: 'Tasks',
@@ -113,6 +119,10 @@ const getPlaylistLabel = (playlist: PlayList) => {
   }
   return 'URI - ' + playlist.uri;
 }
+
+const isDark = useDark()
+const toggleDark = useToggle(isDark)
+
 const { sendMsg: sendMsgToMainProcess, onReplyMsg } = window.electron
 onMounted(() => {
   console.log('mounted')
@@ -180,7 +190,7 @@ const dowloadTS = async () => {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-align: center;
-  color: #2c3e50;
+  /* color: #2c3e50; */
 }
 
 body {
