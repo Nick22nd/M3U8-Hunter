@@ -79,6 +79,10 @@ export default defineConfig(({ command }) => {
       return {
         host: url.hostname,
         port: +url.port,
+        headers: {
+          'Cross-Origin-Opener-Policy': 'same-origin',
+          'Cross-Origin-Embedder-Policy': 'require-corp'
+        }
       }
     })(),
     clearScreen: false,
@@ -90,6 +94,10 @@ export default defineConfig(({ command }) => {
     },
     test: {
 
-    }
+    },
+    optimizeDeps: {
+      exclude: ['@ffmpeg/ffmpeg', '@ffmpeg/util']
+    },
+
   }
 })
