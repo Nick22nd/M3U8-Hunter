@@ -29,7 +29,7 @@
                     <el-text class="truncate" :title="scope.row.title">{{ scope.row.title }}</el-text>
                 </template>
             </el-table-column>
-            <el-table-column fixed="right" label="Operations" width="150">
+            <el-table-column fixed="right" label="Operations" min-width="150">
                 <template #header>
                     <el-input v-model="search" size="small" placeholder="Type to search" />
                 </template>

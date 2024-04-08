@@ -88,7 +88,12 @@ function openDevTool() {
     webview.value?.openDevTools()
 }
 function refreshPage() {
-  webview.value?.reload()
+  if (domReady.value) {
+    webview.value?.reload()
+  } else {
+    webview.value?.stop()
+    domReady.value = true
+  }
 }
 function goBack() {
   webview.value?.goBack()

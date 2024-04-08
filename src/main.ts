@@ -16,7 +16,7 @@ const app = createApp(App)
 
 // register component should be before mount
 // from https://stackoverflow.com/questions/66024797/vue-3-failed-to-resolve-component-with-global-components
-app.component(VueQrcode.name, VueQrcode);
+app.component(VueQrcode.name || 'VueQrcode', VueQrcode);
 
 app.use(router).use(ElementPlus).use(pinia).mount('#app')
   .$nextTick(() => {

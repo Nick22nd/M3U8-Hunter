@@ -2,7 +2,7 @@ import { join } from 'node:path'
 import fs from 'node:fs'
 import download from 'download'
 import { Parser } from 'm3u8-parser'
-import { getAppDataDir } from './m3u8.app'
+import { getAppDataDir } from './utils'
 import { TaskItem } from '../common.types'
 import async from 'async'
 import log from 'electron-log/main';
@@ -49,6 +49,9 @@ export async function downloadTS(task: TaskItem) {
         headers: task.headers,
         // agent: url.startsWith('https') ? proxy.https : proxy.http,
         // filename: 'key',
+        retry: {
+          retries: 3
+        }
       })
     } catch (err) {
       console.error(err)
@@ -111,6 +114,9 @@ export async function downloadTS(task: TaskItem) {
           headers: task.headers,
           // agent: url.startsWith('https') ? proxy.https : proxy.http,
           // filename: name,
+          retry: {
+            retries: 3
+          }
         })
         downloadedCount++
         await jsondb.update({

@@ -11,20 +11,20 @@ import { TaskItem } from '../common.types'
 import { downloadTS } from './m3u8.download'
 import Logger from 'electron-log'
 import { showPlaylistTaskDialog } from '../main'
+import { getAppDataDir } from './utils'
 
-export function getAppDataDir() {
-    const devDir = import.meta.env && import.meta.env.VITE_TMPDIR
-    const appDir = devDir ? devDir : join(os.homedir(), 'M3U8Hunter');
-    console.log('appDir', appDir)
-    fsExtra.ensureDirSync(appDir)
-    return appDir;
-}
+
 export class AppService {
-    storagePath = getAppDataDir()
-    httpTimeout = {
+    // static storagePath = getAppDataDir()
+    static httpTimeout = {
         socket: 30000,
         request: 30000,
         response: 60000,
+    }
+    storagePath: any
+    constructor() {
+        this.storagePath = getAppDataDir()
+        console.log('storagePath', this.storagePath)
     }
 
     public getTime(): number {
@@ -182,8 +182,11 @@ async function downloadFile(url: string, targetPath: string, headers: TaskItem["
     }
     return download(url, targetPath, {
         // filename: name,
-        timeout: appService.httpTimeout,
+        timeout: AppService.httpTimeout,
         headers: _headers,
+        retry: {
+            retries: 3
+        }
     })
 }
 function timeFormat(streamDuration: number) {

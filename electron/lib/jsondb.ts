@@ -1,5 +1,5 @@
 import { JSONFilePreset } from 'lowdb/node'
-import { getAppDataDir } from './m3u8.app'
+import { getAppDataDir } from './utils'
 import { join } from 'node:path'
 import { TaskItem } from '../common.types'
 import Logger from 'electron-log'
@@ -18,8 +18,10 @@ class JSONDB {
 
   async init() {
     try {
-      Logger.info('init jsondb', getAppDataDir())
-      this.db = await JSONFilePreset<Data>(join(getAppDataDir(), 'db.json'), defaultData)
+      console.log('before init jsondb', import.meta.env)
+      const dir = getAppDataDir()
+      Logger.info('init jsondb', dir)
+      this.db = await JSONFilePreset<Data>(join(dir, 'db.json'), defaultData)
     } catch (error) {
       Logger.error('init jsondb error', error)
     }

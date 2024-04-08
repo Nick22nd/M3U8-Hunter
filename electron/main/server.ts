@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import portfinder from 'portfinder';
-import { getAppDataDir } from "../lib/m3u8.app";
+import { getAppDataDir } from "../lib/utils";
 import os from 'os';
 async function main() {
     const app = express();

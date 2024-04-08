@@ -2,18 +2,16 @@ import { app, BrowserWindow, shell, ipcMain } from 'electron'
 import { release } from 'node:os'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { appService, getAppDataDir } from '../lib/m3u8.app'
+import { AppService, appService } from '../lib/m3u8.app'
 import { Message4Renderer, MessageName, TaskItem } from '../common.types'
-import electron from 'vite-plugin-electron'
 import { downloadTS } from '../lib/m3u8.download'
-import { exec } from 'child_process';
 import Logger from 'electron-log'
 import { runServe, serverConfig } from './server'
 import { getDefaultLogDir } from '../lib/utils'
 
 globalThis.__filename = fileURLToPath(import.meta.url)
 globalThis.__dirname = dirname(__filename)
-
+console.log('env file', import.meta.env.VITE_TMPDIR)
 // The built directory structure
 //
 // ├─┬ dist-electron
