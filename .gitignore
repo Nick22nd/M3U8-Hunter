@@ -32,3 +32,6 @@ yarn.lock
 # custom
 tmp/*
 auto-imports.d.ts
+
+docs/node_modules
+docs/.vitepress
