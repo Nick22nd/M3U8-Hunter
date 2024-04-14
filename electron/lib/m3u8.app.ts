@@ -14,7 +14,7 @@ import { showPlaylistTaskDialog } from '../main'
 import { getAppDataDir } from './utils'
 
 
-export class AppService {
+export class M3u8Service {
     // static storagePath = getAppDataDir()
     static httpTimeout = {
         socket: 30000,
@@ -182,7 +182,7 @@ async function downloadFile(url: string, targetPath: string, headers: TaskItem["
     }
     return download(url, targetPath, {
         // filename: name,
-        timeout: AppService.httpTimeout,
+        timeout: M3u8Service.httpTimeout,
         headers: _headers,
         retry: {
             retries: 3
@@ -225,4 +225,4 @@ function analyseM3u8File(targetPath: string, sampleFilename: string) {
     return { type: 'segments', data: segments, duration: streamDuration }
 }
 
-export const appService = new AppService()
+export const m3u8Service = new M3u8Service()

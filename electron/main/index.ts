@@ -2,7 +2,7 @@ import { app, BrowserWindow, shell, ipcMain } from 'electron'
 import { release } from 'node:os'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { AppService, appService } from '../lib/m3u8.app'
+import { M3u8Service, m3u8Service } from '../lib/m3u8.app'
 import { Message4Renderer, MessageName, TaskItem } from '../common.types'
 import { downloadTS } from '../lib/m3u8.download'
 import Logger from 'electron-log'
@@ -128,7 +128,7 @@ ipcMain.handle('msg', async (event, arg) => {
   console.log('from ipc msg:', arg)
   const { type, name, data } = arg
   if (name === MessageName.getTasks) {
-    const taskList = await appService.getTasks()
+    const taskList = await m3u8Service.getTasks()
     // console.log('data getTasks', data, JSON.stringify(data))
     const newMessage: Message4Renderer = {
       type: 'm3u8',
@@ -140,12 +140,12 @@ ipcMain.handle('msg', async (event, arg) => {
   } else if (name === MessageName.downloadM3u8) {
     // if (['m3u8', 'M3U8'].includes(data.type)) {
     const _item = data
-    appService.downloadM3u8(_item)
+    m3u8Service.downloadM3u8(_item)
     // }
   } else if (name === MessageName.deleteTask) {
     console.log('deleteTask', data)
-    await appService.deleteTask(data)
-    const taskList = await appService.getTasks()
+    await m3u8Service.deleteTask(data)
+    const taskList = await m3u8Service.getTasks()
     // console.log('data getTasks', data, JSON.stringify(data))
     const newMessage: Message4Renderer = {
       type: 'm3u8',
@@ -183,7 +183,7 @@ ipcMain.handle('msg', async (event, arg) => {
 })
 export async function updateProgress() {
   // console.log('updateProgress')
-  const tasks = await appService.getTasks()
+  const tasks = await m3u8Service.getTasks()
   const newMessage: Message4Renderer = {
     type: 'm3u8',
     name: MessageName.getTasks,

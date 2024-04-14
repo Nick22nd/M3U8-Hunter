@@ -16,7 +16,7 @@
 </template>
 <script setup lang="ts">
 import { Message4Renderer, MessageName } from '../common.types';
-import FfmpegDemo from '../components/FfmpegDemo.vue';
+import FfmpegDemo from '../components/FFmpegDemo.vue';
 const { sendMsg: sendMsgToMainProcess } = window.electron
 
 const openLink = () => {
