@@ -3,11 +3,11 @@
         <el-table ref="multipleTableRef" :data="filterTableData" style="" max-height="95vh"
             @selection-change="handleSelectionChange">
             <el-table-column type="selection" width="55" />
-            <el-table-column property="name" label="Name" width="150">
+            <!-- <el-table-column property="name" label="Name" width="150">
                 <template #default="scope">
                     <el-text class="truncate" :title="scope.row.name">{{ scope.row.name }}</el-text>
                 </template>
-            </el-table-column>
+</el-table-column> -->
 
             <el-table-column label="Progress" width="100">
                 <template #default="scope">

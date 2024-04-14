@@ -6,7 +6,7 @@ import { M3u8Service, m3u8Service } from '../lib/m3u8.app'
 import { Message4Renderer, MessageName, TaskItem } from '../common.types'
 import { downloadTS } from '../lib/m3u8.download'
 import Logger from 'electron-log'
-import { runServe, serverConfig } from './server'
+import { runServe, serverConfig } from '../service/web.app'
 import { getDefaultLogDir } from '../lib/utils'
 
 globalThis.__filename = fileURLToPath(import.meta.url)

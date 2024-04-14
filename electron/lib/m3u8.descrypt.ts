@@ -5,7 +5,7 @@ import * as fs from 'node:fs';
 // const request = require('request');
 import { Parser } from 'm3u8-parser';
 import { TaskItem } from '../common.types';
-import { getAppDataDir } from './m3u8.app';
+import { getAppDataDir } from './utils';
 
 // or use ffmpeg command: ffmpeg -allowed_extensions ALL -i 39715.m3u8 -c copy output.ts
 function de(task: TaskItem) {

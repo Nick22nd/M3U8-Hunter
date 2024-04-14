@@ -81,7 +81,14 @@ export class M3u8Service {
             else {
                 console.log('start download')
                 try {
-                    await downloadFile(m3u8Url, targetPath, headers)
+                    await download(m3u8Url, targetPath, {
+                        // filename: name,
+                        timeout: M3u8Service.httpTimeout,
+                        headers: headers,
+                        retry: {
+                            retries: 3
+                        }
+                    })
                 } catch (error) {
                     Logger.error('download m3u8 error', error)
                 }
@@ -157,38 +164,7 @@ export class M3u8Service {
         }
     }
 }
-async function downloadFile(url: string, targetPath: string, headers: TaskItem["headers"]) {
-    // const stream = got.stream(url)
-    // name = name || new URL(url).pathname.split('/').pop()
-    // console.log('name', name)
-    // console.log(targetPath, name)
-    // const writer = fs.createWriteStream(join(targetPath, name))
 
-    // stream.pipe(writer)
-    // return new Promise((resolve, reject) => {
-    //   writer.on('finish', resolve)
-    //   writer.on('error', reject)
-    // })
-    const _headers = headers
-    try {
-        await jsondb.update({
-            url,
-            headers: _headers,
-            status: 'downloading',
-        })
-    }
-    catch (error) {
-        console.log('error', error)
-    }
-    return download(url, targetPath, {
-        // filename: name,
-        timeout: M3u8Service.httpTimeout,
-        headers: _headers,
-        retry: {
-            retries: 3
-        }
-    })
-}
 function timeFormat(streamDuration: number) {
     const hours = Math.floor(streamDuration / 3600)
     const minutes = Math.floor((streamDuration - hours * 3600) / 60)
