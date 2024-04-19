@@ -183,7 +183,7 @@ async function download(row: MediaMessage) {
           type: 'success',
           message: `Your task name is:${value}`,
         })
-        const defaultName = new URL(rowRaw.url).pathname.split('/').pop() || ''
+        const defaultName = Date.now().toString()
         const newTask: TaskItem = {
           status: 'downloading',
           from: url.value,

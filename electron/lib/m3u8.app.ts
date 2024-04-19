@@ -91,6 +91,7 @@ export class M3u8Service {
                     })
                 } catch (error) {
                     Logger.error('download m3u8 error', error)
+                    return
                 }
                 console.log('download finished')
 

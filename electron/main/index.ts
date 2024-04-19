@@ -54,8 +54,8 @@ async function createWindow() {
   win = new BrowserWindow({
     title: 'M3U8-Hunter',
     icon: join(process.env.VITE_PUBLIC, 'favicon.ico'),
-    width: 1024,
-    height: 768,
+    width: 800,
+    height: 600,
     webPreferences: {
       preload,
       // Warning: Enable nodeIntegration and disable contextIsolation is not secure in production
@@ -122,7 +122,11 @@ async function createWindow() {
   // win.webContents.on('will-navigate', (event, url) => { }) #344
 }
 // run express server
-runServe()
+function registerService() {
+  runServe()
+}
+
+registerService()
 
 ipcMain.handle('msg', async (event, arg) => {
   console.log('from ipc msg:', arg)

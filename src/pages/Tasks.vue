@@ -83,6 +83,7 @@ const filterTableData = computed(() =>
             if (search.value && !!data.name) {
                 return data.name.toLowerCase().includes(search.value.toLowerCase())
                     || (data.from && data.from.toLocaleLowerCase().includes(search.value.toLowerCase()))
+                    || (data.title && data.title.toLocaleLowerCase().includes(search.value.toLowerCase()))
             } else {
                 return true
             }
