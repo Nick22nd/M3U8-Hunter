@@ -2,12 +2,15 @@ import { app, BrowserWindow, shell, ipcMain } from 'electron'
 import { release } from 'node:os'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { M3u8Service, m3u8Service } from '../lib/m3u8.app'
+import { M3u8Service } from '../lib/m3u8.app'
 import { Message4Renderer, MessageName, TaskItem } from '../common.types'
 import { downloadTS } from '../lib/m3u8.download'
 import Logger from 'electron-log'
 import { runServe, serverConfig } from '../service/web.app'
 import { getDefaultLogDir } from '../lib/utils'
+import { DialogService } from '../service/dialog.service'
+import { AppService } from './app'
+import { Sniffer } from '../service/sniffer.service'
 
 globalThis.__filename = fileURLToPath(import.meta.url)
 globalThis.__dirname = dirname(__filename)
@@ -49,7 +52,17 @@ let win: BrowserWindow | null = null
 const preload = join(__dirname, '../preload/index.mjs')
 const url = process.env.VITE_DEV_SERVER_URL
 const indexHtml = join(process.env.DIST, 'index.html')
+// run express server
+export let serviceHub: AppService
+function registerService() {
 
+  runServe()
+  let dialogService = new DialogService(win)
+  let m3u8Service = new M3u8Service(dialogService)
+  let snifferService = new Sniffer(win)
+  snifferService.m3u8Find()
+  serviceHub = new AppService(dialogService, m3u8Service)
+}
 async function createWindow() {
   win = new BrowserWindow({
     title: 'M3U8-Hunter',
@@ -68,6 +81,7 @@ async function createWindow() {
 
     },
   })
+  registerService()
 
   if (process.env.VITE_DEV_SERVER_URL) { // electron-vite-vue#298
     console.log("process.env.VITE_DEV_SERVER_URLs", process.env.VITE_DEV_SERVER_URL)
@@ -78,61 +92,25 @@ async function createWindow() {
   } else {
     win.loadFile(indexHtml)
   }
-  win.webContents.session.webRequest.onBeforeSendHeaders((details, callback) => {
-    if (!details.webContentsId || details.webContentsId === win.webContents.id) {
-      callback({ cancel: false })
-      return
-    }
-    // const id = details.webContentsId
-
-    if (/http.*\.((mp4)|(m3u8)|(flv)|(mp3)|(mpd)|(wav))(\?|$)/.test(details.url)) {
-      const [_null, _type] = details.url.match(/http.*\.((mp4)|(m3u8)|(flv)|(mp3)|(mpd)|(wav))(\?|$)/)
-
-      // if (!details.url.includes('/hls') || details.url.includes('480p') || details.url.includes('live')) {
-      //   callback({ cancel: true })
-      //   return
-      // }
-      // console.log(details)
-      const _item = {
-        type: _type.toUpperCase(),
-        url: details.url,
-        headers: details.requestHeaders,
-      }
-      const req: Message4Renderer = {
-        data: { browserVideoItem: _item },
-        name: MessageName.findM3u8,
-        type: 'm3u8',
-      }
-      win.webContents.send('reply-msg', req)
-      // mainWindow && mainWindow.webContents.send('message', { browserVideoItem: _item })
-    }
-    callback({ cancel: false })
-  })
   // Test actively push message to the Electron-Renderer
   win.webContents.on('did-finish-load', () => {
     win?.webContents.send('main-process-message', new Date().toLocaleString() + ' m3u8-hunter')
-
   })
 
   // Make all links open with the browser, not with the application
   win.webContents.setWindowOpenHandler(({ url }) => {
+    console.log('setWindowOpenHandler')
     if (url.startsWith('https:')) shell.openExternal(url)
     return { action: 'deny' }
   })
   // win.webContents.on('will-navigate', (event, url) => { }) #344
 }
-// run express server
-function registerService() {
-  runServe()
-}
-
-registerService()
 
 ipcMain.handle('msg', async (event, arg) => {
   console.log('from ipc msg:', arg)
   const { type, name, data } = arg
   if (name === MessageName.getTasks) {
-    const taskList = await m3u8Service.getTasks()
+    const taskList = await serviceHub.m3u8Service.getTasks()
     // console.log('data getTasks', data, JSON.stringify(data))
     const newMessage: Message4Renderer = {
       type: 'm3u8',
@@ -144,12 +122,12 @@ ipcMain.handle('msg', async (event, arg) => {
   } else if (name === MessageName.downloadM3u8) {
     // if (['m3u8', 'M3U8'].includes(data.type)) {
     const _item = data
-    m3u8Service.downloadM3u8(_item)
+    serviceHub.m3u8Service.downloadM3u8(_item)
     // }
   } else if (name === MessageName.deleteTask) {
     console.log('deleteTask', data)
-    await m3u8Service.deleteTask(data)
-    const taskList = await m3u8Service.getTasks()
+    await serviceHub.m3u8Service.deleteTask(data)
+    const taskList = await serviceHub.m3u8Service.getTasks()
     // console.log('data getTasks', data, JSON.stringify(data))
     const newMessage: Message4Renderer = {
       type: 'm3u8',
@@ -185,27 +163,7 @@ ipcMain.handle('msg', async (event, arg) => {
   }
 
 })
-export async function updateProgress() {
-  // console.log('updateProgress')
-  const tasks = await m3u8Service.getTasks()
-  const newMessage: Message4Renderer = {
-    type: 'm3u8',
-    name: MessageName.getTasks,
-    data: tasks
-  }
-  win?.webContents.send('reply-msg', newMessage)
-}
-export async function showPlaylistTaskDialog(playlists: any, task: TaskItem) {
-  const newMessage: Message4Renderer = {
-    type: 'm3u8',
-    name: MessageName.getPlaylist,
-    data: {
-      playlists,
-      task
-    }
-  }
-  win?.webContents.send('reply-msg', newMessage)
-}
+
 app.whenReady().then(createWindow)
 
 app.on('window-all-closed', () => {

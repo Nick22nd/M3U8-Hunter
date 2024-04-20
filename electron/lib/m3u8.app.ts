@@ -2,16 +2,15 @@ import fs from 'node:fs'
 import { join } from 'node:path'
 import { Parser } from 'm3u8-parser'
 import download from 'download'
-import os from 'node:os'
 import fsExtra from 'fs-extra'
+import { getAppDataDir, timeFormat } from './utils'
+import { DialogService } from '../service/dialog.service'
+import { TaskItem } from '../common.types'
+import async from 'async'
 
 import { jsondb } from './jsondb'
 import { dialog } from 'electron'
-import { TaskItem } from '../common.types'
-import { downloadTS } from './m3u8.download'
 import Logger from 'electron-log'
-import { showPlaylistTaskDialog } from '../main'
-import { getAppDataDir } from './utils'
 
 
 export class M3u8Service {
@@ -22,7 +21,9 @@ export class M3u8Service {
         response: 60000,
     }
     storagePath: any
-    constructor() {
+    dialogService: DialogService
+    constructor(dialogService: DialogService) {
+        this.dialogService = dialogService
         this.storagePath = getAppDataDir()
         console.log('storagePath', this.storagePath)
     }
@@ -54,7 +55,7 @@ export class M3u8Service {
         try {
             if (fs.existsSync(join(targetPath, sampleFilename))) {
                 console.log('file exists')
-                const result = analyseM3u8File(targetPath, sampleFilename)
+                const result = this.analyzeM3u8File(targetPath, sampleFilename)
                 if (result.type === 'segments') {
                     const duration = result.duration
                     const newTask: TaskItem = {
@@ -69,13 +70,13 @@ export class M3u8Service {
                     }
                     await jsondb.update(newTask)
                     try {
-                        await downloadTS(newTask)
+                        await this.downloadTS(newTask)
                     } catch (error) {
                         Logger.error('downloadTS in file exists', error)
                     }
                 } else {
                     // playlist 
-                    showPlaylistTaskDialog(result.data, videoItem)
+                    this.dialogService.showPlaylistTaskDialog(result.data, videoItem)
                 }
             }
             else {
@@ -95,7 +96,7 @@ export class M3u8Service {
                 }
                 console.log('download finished')
 
-                const result = await analyseM3u8File(targetPath, sampleFilename)
+                const result = await this.analyzeM3u8File(targetPath, sampleFilename)
                 // segments or playlists
                 if (result.type === 'segments') {
                     const duration = result.duration
@@ -119,14 +120,14 @@ export class M3u8Service {
                     dialog.showMessageBox(options)
                         .then(async (val) => {
                             try {
-                                await downloadTS(newTask)
+                                await this.downloadTS(newTask)
                             } catch (error) {
                                 Logger.error('downloadTS', error)
                             }
                         }).catch(Logger.error);
                 } else {
                     // playlist 
-                    showPlaylistTaskDialog(result.data, videoItem)
+                    this.dialogService.showPlaylistTaskDialog(result.data, videoItem)
                 }
             }
         }
@@ -164,42 +165,160 @@ export class M3u8Service {
             console.log('error', error)
         }
     }
-}
+    /**
+     * analyze the M3U8 file return segments or playlists
+     * @param targetPath file directory
+     * @param sampleFilename file name
+     * @returns 
+     */
+    analyzeM3u8File(targetPath: string, sampleFilename: string) {
+        const str = fs.readFileSync(join(targetPath, sampleFilename), 'utf8')
+        const parser = new Parser()
+        parser.push(str)
+        // console.log(parser.manifest)
+        const { segments } = parser.manifest
+        let streamDuration = 0
+        streamDuration = segments.reduce((acc, cur) => {
+            return acc + cur.duration
+        }, 0)
+        console.log('streamDuration: ', streamDuration, timeFormat(streamDuration))
+        // console.log(parser)
 
-function timeFormat(streamDuration: number) {
-    const hours = Math.floor(streamDuration / 3600)
-    const minutes = Math.floor((streamDuration - hours * 3600) / 60)
-    const seconds = Math.floor(streamDuration - hours * 3600 - minutes * 60)
-    const str = [hours, minutes, seconds].map((item) => {
-        return item.toString().padStart(2, '0')
-    }).join(':')
-    return str
-}
-/**
- * analyze the M3U8 file return segments or playlists
- * @param targetPath file directory
- * @param sampleFilename file name
- * @returns 
- */
-function analyseM3u8File(targetPath: string, sampleFilename: string) {
-    const str = fs.readFileSync(join(targetPath, sampleFilename), 'utf8')
-    const parser = new Parser()
-    parser.push(str)
-    // console.log(parser.manifest)
-    const { segments } = parser.manifest
-    let streamDuration = 0
-    streamDuration = segments.reduce((acc, cur) => {
-        return acc + cur.duration
-    }, 0)
-    console.log('streamDuration: ', streamDuration, timeFormat(streamDuration))
-    // console.log(parser)
-
-    // playlist
-    if (parser.manifest.playlists && parser.manifest.playlists.length !== 0) {
-        console.log(parser.manifest.playlists)
-        return { type: 'playlist', data: parser.manifest.playlists, duration: streamDuration }
+        // playlist
+        if (parser.manifest.playlists && parser.manifest.playlists.length !== 0) {
+            console.log(parser.manifest.playlists)
+            return { type: 'playlist', data: parser.manifest.playlists, duration: streamDuration }
+        }
+        return { type: 'segments', data: segments, duration: streamDuration }
     }
-    return { type: 'segments', data: segments, duration: streamDuration }
+    async downloadTS(task: TaskItem) {
+        console.log('task', task)
+        const urlOjb = new URL(task.url)
+        const sampleFilename = urlOjb.pathname.split('/').pop()
+        const targetPath = getAppDataDir()
+        const baseURL = task.url.substring(0, task.url.indexOf(sampleFilename))
+        console.log('baseURL', baseURL)
+        const tsDir = task.directory
+        console.log('tsDir', tsDir)
+
+        const str = fs.readFileSync(join(tsDir, sampleFilename), 'utf8')
+        const parser = new Parser()
+        parser.push(str)
+        // console.log(parser.manifest)
+        const { segments } = parser.manifest
+        let streamDuration = 0
+        streamDuration = segments.reduce((acc, cur) => {
+            return acc + cur.duration
+        }, 0)
+        const segmentCount = segments.length
+        let downloadedCount = 0
+        console.log('streamDuration: ', streamDuration)
+
+        if (!fs.existsSync(tsDir)) {
+            console.log('tsDir', tsDir)
+            fs.mkdirSync(tsDir, { recursive: true })
+        }
+        // download key
+        const key = parser.manifest.segments[0].key?.uri
+        if (key) {
+            const url = `${baseURL}${key}`
+            console.log('key', url)
+            try {
+                await download(url, tsDir, {
+                    headers: task.headers,
+                    // agent: url.startsWith('https') ? proxy.https : proxy.http,
+                    // filename: 'key',
+                    retry: {
+                        retries: 3
+                    }
+                })
+            } catch (err) {
+                console.error(err)
+                Logger.error('[download] error key', url, err);
+            }
+        }
+        // check if segments existed
+        const existedSegments = fs.readdirSync(tsDir)
+        console.log('existedSegments', existedSegments.length)
+        let count = 0
+        let needToDownloadCount = 0
+        for (const segment of segments) {
+            const segmentFile = new URL(`${baseURL}${segment.uri}`).pathname.split('/').pop()
+            if (existedSegments.includes(segmentFile)) {
+                downloadedCount++
+                count++
+                // console.log('existed', segmentFile)
+            } else {
+                needToDownloadCount++
+                // console.log('not existed', segmentFile)
+            }
+        }
+        console.log('needToDownloadCount', needToDownloadCount)
+        await jsondb.update({
+            ...task,
+            segmentCount: segmentCount,
+            downloadedCount: downloadedCount,
+            progress: downloadedCount + '/' + segmentCount,
+        })
+        const newTaskArray = await jsondb.getDB()
+        this.dialogService.updateProgress(newTaskArray)
+        console.log('count', count)
+
+        async.mapLimit(segments, 5, async (segment) => {
+            // console.log('segment', segment)
+            try {
+                let url = ''
+                if (segment.uri.startsWith('http') || segment.uri.startsWith('https')) {
+                    url = segment.uri
+                } else {
+                    url = `${baseURL}${segment.uri}`
+                }
+                const segmentFile = new URL(url).pathname.split('/').pop()
+                // const name = segment.uri
+                if (fs.existsSync(join(tsDir, segmentFile))) {
+                    // log.info('[download] already existed, skip segment', segment)
+                    // downloadedCount++
+                    return 'existed'
+                } else {
+                    let a = await download(url, tsDir, {
+                        headers: task.headers,
+                        // agent: url.startsWith('https') ? proxy.https : proxy.http,
+                        // filename: name,
+                        retry: {
+                            retries: 3
+                        }
+                    })
+                    downloadedCount++
+                    await jsondb.update({
+                        ...task,
+                        segmentCount: segmentCount,
+                        downloadedCount: downloadedCount,
+                        progress: downloadedCount + '/' + segmentCount,
+                    })
+                    const newTaskArray = await jsondb.getDB()
+                    this.dialogService.updateProgress(newTaskArray)
+                    return 'ok'
+                }
+
+            } catch (error) {
+                console.error(error);
+                const url = `${baseURL}${segment.uri}`
+                Logger.error('[download] error segment', url, error);
+                return 'error'
+            }
+        }, (err, results) => {
+            if (err) {
+                console.error(err)
+                Logger.error('[download] error', err);
+                return
+            }
+            // results is now an array of the response bodies
+            let errorCount = results.map((item, index) => item === 'error' ? index : null).filter(item => item !== null)
+            const okCount = results.map((item, index) => item === 'ok' ? index : null).filter(item => item !== null)
+            console.log('task ok', okCount.length)
+            console.log('task error', errorCount.length)
+        })
+    }
+
 }
 
-export const m3u8Service = new M3u8Service()

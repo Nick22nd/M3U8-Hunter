@@ -16,10 +16,20 @@ export function getDefaultLogDir(appName) {
         }
     }
 }
+
 export function getAppDataDir() {
     const devDir = import.meta.env && import.meta.env.VITE_TMPDIR
     const appDir = devDir ? devDir : join(os.homedir(), 'M3U8Hunter');
-    console.log('appDir', appDir)
     fsExtra.ensureDirSync(appDir)
     return appDir;
+}
+
+export function timeFormat(streamDuration: number) {
+    const hours = Math.floor(streamDuration / 3600)
+    const minutes = Math.floor((streamDuration - hours * 3600) / 60)
+    const seconds = Math.floor(streamDuration - hours * 3600 - minutes * 60)
+    const str = [hours, minutes, seconds].map((item) => {
+        return item.toString().padStart(2, '0')
+    }).join(':')
+    return str
 }

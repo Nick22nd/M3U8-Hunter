@@ -7,7 +7,7 @@ import { TaskItem } from '../common.types'
 import async from 'async'
 import log from 'electron-log/main';
 import { jsondb } from './jsondb'
-import { updateProgress } from '../main'
+import { serviceHub } from '../main'
 
 // Optional, initialize the logger for any renderer process
 log.initialize();
@@ -71,29 +71,20 @@ export async function downloadTS(task: TaskItem) {
       // console.log('existed', segmentFile)
     } else {
       needToDownloadCount++
-      console.log('not existed', segmentFile)
+      // console.log('not existed', segmentFile)
     }
   }
+  console.log('needToDownloadCount', needToDownloadCount)
   await jsondb.update({
     ...task,
     segmentCount: segmentCount,
     downloadedCount: downloadedCount,
     progress: downloadedCount + '/' + segmentCount,
   })
-  updateProgress()
+  const newTaskArray = await jsondb.getDB()
+  serviceHub.dialogService.updateProgress(newTaskArray)
   console.log('count', count)
 
-  // console.log('segments', segments)
-  // for (const segment of segments) {
-  //   console.log('segment', segment)
-  //   const url = `${baseURL}${segment.uri}`
-  //   // const name = segment.uri
-  //   await download(url, tsDir, {
-  //     headers: task.headers,
-  //     // agent: url.startsWith('https') ? proxy.https : proxy.http,
-  //     // filename: name,
-  //   })
-  // }
   async.mapLimit(segments, 5, async function (segment) {
     // console.log('segment', segment)
     try {
@@ -125,14 +116,15 @@ export async function downloadTS(task: TaskItem) {
           downloadedCount: downloadedCount,
           progress: downloadedCount + '/' + segmentCount,
         })
-        updateProgress()
+        const newTaskArray = await jsondb.getDB()
+        serviceHub.dialogService.updateProgress(newTaskArray)
         return 'ok'
       }
 
     } catch (error) {
       console.error(error);
       const url = `${baseURL}${segment.uri}`
-      log.error('[download] error segment', url, segment, error);
+      log.error('[download] error segment', url, error);
       return 'error'
     }
   }, (err, results) => {
@@ -142,14 +134,10 @@ export async function downloadTS(task: TaskItem) {
       return
     }
     // results is now an array of the response bodies
-    console.log('task ok', results)
+    let errorCount = results.map((item, index) => item === 'error' ? index : null).filter(item => item !== null)
+    const okCount = results.map((item, index) => item === 'ok' ? index : null).filter(item => item !== null)
+    console.log('task ok', okCount.length)
+    console.log('task error', errorCount.length)
   })
 }
 
-// async function mainModule() {
-//   await jsondb.init()
-//   const data = await jsondb.get()
-//   console.log('data', data.tasks.at(0))
-//   downloadTS(data.tasks.at(0))
-// }
-// mainModule()

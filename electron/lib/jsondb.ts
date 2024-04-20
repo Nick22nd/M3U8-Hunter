@@ -18,7 +18,7 @@ class JSONDB {
 
   async init() {
     try {
-      console.log('before init jsondb', import.meta.env)
+      // console.log('before init jsondb', import.meta.env)
       const dir = getAppDataDir()
       Logger.info('init jsondb', dir)
       this.db = await JSONFilePreset<Data>(join(dir, 'db.json'), defaultData)
