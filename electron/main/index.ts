@@ -9,7 +9,7 @@ import Logger from 'electron-log'
 import { runServe, serverConfig } from '../service/web.app'
 import { getDefaultLogDir } from '../lib/utils'
 import { DialogService } from '../service/dialog.service'
-import { AppService } from './app'
+import { ServiceContainer } from './app'
 import { Sniffer } from '../service/sniffer.service'
 
 globalThis.__filename = fileURLToPath(import.meta.url)
@@ -53,15 +53,15 @@ const preload = join(__dirname, '../preload/index.mjs')
 const url = process.env.VITE_DEV_SERVER_URL
 const indexHtml = join(process.env.DIST, 'index.html')
 // run express server
-export let serviceHub: AppService
-function registerService() {
+export let serviceHub: ServiceContainer
 
+function registerService() {
   runServe()
   let dialogService = new DialogService(win)
   let m3u8Service = new M3u8Service(dialogService)
   let snifferService = new Sniffer(win)
   snifferService.m3u8Find()
-  serviceHub = new AppService(dialogService, m3u8Service)
+  serviceHub = new ServiceContainer(dialogService, m3u8Service)
 }
 async function createWindow() {
   win = new BrowserWindow({
@@ -105,11 +105,8 @@ async function createWindow() {
   })
   // win.webContents.on('will-navigate', (event, url) => { }) #344
 }
-
-ipcMain.handle('msg', async (event, arg) => {
-  console.log('from ipc msg:', arg)
-  const { type, name, data } = arg
-  if (name === MessageName.getTasks) {
+const handlers = {
+  [MessageName.getTasks]: async () => {
     const taskList = await serviceHub.m3u8Service.getTasks()
     // console.log('data getTasks', data, JSON.stringify(data))
     const newMessage: Message4Renderer = {
@@ -118,13 +115,13 @@ ipcMain.handle('msg', async (event, arg) => {
       data: taskList,
     }
     win?.webContents.send('reply-msg', newMessage)
-    return
-  } else if (name === MessageName.downloadM3u8) {
+  },
+  [MessageName.downloadM3u8]: async (data: TaskItem) => {
     // if (['m3u8', 'M3U8'].includes(data.type)) {
-    const _item = data
-    serviceHub.m3u8Service.downloadM3u8(_item)
+    serviceHub.m3u8Service.downloadM3u8(data)
     // }
-  } else if (name === MessageName.deleteTask) {
+  },
+  [MessageName.deleteTask]: async (data: number) => {
     console.log('deleteTask', data)
     await serviceHub.m3u8Service.deleteTask(data)
     const taskList = await serviceHub.m3u8Service.getTasks()
@@ -135,7 +132,8 @@ ipcMain.handle('msg', async (event, arg) => {
       data: taskList,
     }
     win?.webContents.send('reply-msg', newMessage)
-  } else if (name === MessageName.startTask) {
+  },
+  [MessageName.startTask]: async (data: TaskItem) => {
     console.log('startTask', data)
     try {
       // await appService.downloadM3u8(_item)
@@ -143,23 +141,35 @@ ipcMain.handle('msg', async (event, arg) => {
     } catch (error) {
       console.log('error', error)
     }
-  } else if (name === MessageName.openDir) {
+  },
+  [MessageName.openDir]: async (data: string) => {
     shell.openPath(data)
 
     // appService.refactorTask()
-  } else if (name === MessageName.getServerConfig) {
+  },
+  [MessageName.getServerConfig]: async () => {
     const newMessage: Message4Renderer = {
       type: 'server',
       name: MessageName.getServerConfig,
       data: serverConfig
     }
     win?.webContents.send('reply-msg', newMessage)
-  } else if (name === MessageName.openLog) {
+  },
+  [MessageName.openLog]: async () => {
     const logDir = getDefaultLogDir(app.name)
     shell.openPath(logDir)
-  } else if (name === MessageName.openUrl) {
+  },
+  [MessageName.openUrl]: async (data: string) => {
     console.log('openUrl', data)
     shell.openExternal(data)
+  },
+}
+
+ipcMain.handle('msg', async (event, arg) => {
+  console.log('from ipc msg:', arg)
+  const { type, name, data } = arg
+  if (handlers[name]) {
+    return handlers[name](data)
   }
 
 })

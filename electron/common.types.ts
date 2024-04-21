@@ -31,7 +31,8 @@ export interface TaskItem {
     directory?: string
     segmentCount?: number
     downloadedCount?: number
-    progress?: string
+    progress?: string,
+    retryCount?: number,
 }
 export interface FindedResource {
     url: string
