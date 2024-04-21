@@ -35,24 +35,28 @@
                 </template>
                 <template #default="scope">
                     <div class="flex justify-start items-center flex-wrap">
-                        <el-button link type="primary" size="small" @click="startTask(scope.row)">
-                            <Play title="start" />
-                        </el-button>
-                        <el-button link type="primary" size="small" @click="deleteItem(scope.row)">
-                            <Trash title="delete" />
-                        </el-button>
-                        <el-button link type="primary" size="small" @click="openDir(scope.row)">
-                            <FolderClosed title="open dir" />
-                        </el-button>
-                        <el-button link type="primary" size="small" @click="playTask(scope.row)">
-                            <Youtube title="play" />
-                        </el-button>
-                        <el-button link type="primary" size="small" @click="openLink(scope.row)">
-                            <Link title="link" />
-                        </el-button>
-                        <el-button link type="primary" size="small" @click="restart(scope.row)">
-                            <RefreshCw title="restart" />
-                        </el-button>
+                        <div class="m-r-3">
+                            <el-button link type="primary" size="small" @click="startTask(scope.row)">
+                                <Play title="start" />
+                            </el-button>
+                            <el-button link type="primary" size="small" @click="deleteItem(scope.row)">
+                                <Trash title="delete" />
+                            </el-button>
+                            <el-button link type="primary" size="small" @click="openDir(scope.row)">
+                                <FolderClosed title="open dir" />
+                            </el-button>
+                        </div>
+                        <div>
+                            <el-button link type="primary" size="small" @click="playTask(scope.row)">
+                                <Youtube title="play" />
+                            </el-button>
+                            <el-button link type="primary" size="small" @click="openLink(scope.row)">
+                                <Link title="link" />
+                            </el-button>
+                            <el-button link type="primary" size="small" @click="restart(scope.row)">
+                                <RefreshCw title="restart" />
+                            </el-button>
+                        </div>
                     </div>
                 </template>
             </el-table-column>
