@@ -2,7 +2,7 @@
   <el-container class="h-screen">
     <el-tabs v-model:model-value="taskStore.activeTab" @tab-change="changeTabs" type="border-card" tab-position="left"
       class="w-full demo-tabs">
-      <el-tab-pane v-for="tab of tabs" :label="tab.label" :name="tab.label">
+      <el-tab-pane v-for="tab of tabs" :label="tab.label" :name="tab.label" :key="tab.label">
         <template #label>
           <div class="flex justify-between items-center w-20">
             <el-icon class="mr-3">
@@ -17,7 +17,7 @@
     <el-dialog v-model="centerDialogVisible" title="Warning" width="500" center>
       <span>Task Name: {{ waitingTask?.name }}</span>
       <el-select v-model="selectedUrl" placeholder="Please select a zone">
-        <el-option v-for="item of playlists" :label="getPlaylistLabel(item)" :value="item.uri" />
+        <el-option v-for="item of playlists" :label="getPlaylistLabel(item)" :value="item.uri" :key="item.uri" />
       </el-select>
       <template #footer>
         <div class="dialog-footer">

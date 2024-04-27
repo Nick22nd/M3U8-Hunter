@@ -57,9 +57,9 @@ export let serviceHub: ServiceContainer
 
 function registerService() {
   runServe()
-  let dialogService = new DialogService(win)
-  let m3u8Service = new M3u8Service(dialogService)
-  let snifferService = new Sniffer(win)
+  const dialogService = new DialogService(win)
+  const m3u8Service = new M3u8Service(dialogService)
+  const snifferService = new Sniffer(win)
   snifferService.m3u8Find()
   serviceHub = new ServiceContainer(dialogService, m3u8Service)
 }
