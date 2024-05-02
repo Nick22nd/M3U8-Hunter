@@ -41,12 +41,13 @@ import Home from './pages/Home.vue';
 import Tasks from './pages/Tasks.vue';
 import WebviewVue from './pages/Webview.vue';
 import { TaskItem, MediaMessage, Message4Renderer, MessageName, TabList } from './common.types';
-import { TabPaneName } from 'element-plus';
+import { ElNotification, TabPaneName } from 'element-plus';
 import { useFindedMediaStore, useTaskStore } from './stores/';
 import Setting from './pages/Setting.vue';
 import { Film, ListChecks, Settings, Globe, Info } from 'lucide-vue-next';
 import { useDark, useToggle } from '@vueuse/core';
 import { Moon, Sunny } from '@element-plus/icons-vue'
+
 const tabs = [
   {
     label: 'Tasks',
@@ -143,6 +144,13 @@ onMounted(() => {
       playlists.value = msg.data.playlists
       waitingTask.value = msg.data.task
       centerDialogVisible.value = true
+    } else if(msg.name === MessageName.getNotification) {
+      const { title, message } = msg.data
+      ElNotification({
+        title,
+        message,
+        // duration: 0,
+      })
     }
   })
 })

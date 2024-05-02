@@ -8,7 +8,8 @@ export enum MessageName {
     getServerConfig,
     openLog,
     openUrl,
-    getPlaylist
+    getPlaylist,
+    getNotification,
 }
 export type Message4Renderer = {
     type: string
@@ -21,7 +22,7 @@ export interface TaskItem {
         [key: string]: string
     }
     type?: string
-    status: 'downloading' | 'downloaded' | 'failed',
+    status: 'downloading' | 'downloaded' | 'failed' | 'paused' | 'success' | 'waiting',
     duration?: number
     durationStr?: string
     name?: string,

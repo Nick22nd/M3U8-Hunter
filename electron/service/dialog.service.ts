@@ -26,4 +26,15 @@ export class DialogService {
         }
         this.win.webContents.send('reply-msg', newMessage)
     }
+    showNotification(title: string, body: string) {
+        const newMessage: Message4Renderer = {
+            type: 'm3u8',
+            name: MessageName.getNotification,
+            data: {
+                title,
+                message: body
+            }
+        }
+        this.win.webContents.send('reply-msg', newMessage)
+    }
 }

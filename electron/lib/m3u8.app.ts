@@ -9,7 +9,6 @@ import { TaskItem } from '../common.types'
 import async from 'async'
 
 import { jsondb } from './jsondb'
-import { dialog } from 'electron'
 import Logger from 'electron-log'
 
 
@@ -100,7 +99,7 @@ export class M3u8Service {
                 // segments or playlists
                 if (result.type === 'segments') {
                     const duration = result.duration
-                    let newTask: TaskItem = {
+                    const newTask: TaskItem = {
                         ...videoItem,
                         url: m3u8Url,
                         headers: headers,
@@ -111,20 +110,17 @@ export class M3u8Service {
                         directory: targetPath,
                     }
                     await jsondb.update(newTask)
-                    const options: Electron.MessageBoxOptions = {
-                        type: 'info',
-                        title: 'Application Menu Demo',
-                        buttons: ['Ok'],
-                        message: 'name: ' + sampleFilename + '\ntime durattion ' + timeFormat(duration) + 's',
+                    const notification = {
+                        title: 'Task Info',
+                        body: 'name: ' + sampleFilename + '\n time durattion ' + timeFormat(duration) + 's',
                     }
-                    dialog.showMessageBox(options)
-                        .then(async (val) => {
-                            try {
-                                await this.downloadTS(newTask)
-                            } catch (error) {
-                                Logger.error('downloadTS', error)
-                            }
-                        }).catch(Logger.error);
+                    this.dialogService.showNotification(notification.title, notification.body)
+                    try {
+                        await this.downloadTS(newTask)
+                    } catch (error) {
+                        Logger.error('downloadTS', error)
+                    }
+
                 } else {
                     // playlist 
                     this.dialogService.showPlaylistTaskDialog(result.data, videoItem)
@@ -280,7 +276,7 @@ export class M3u8Service {
                     // downloadedCount++
                     return 'existed'
                 } else {
-                    let a = await download(url, tsDir, {
+                    const a = await download(url, tsDir, {
                         headers: task.headers,
                         // agent: url.startsWith('https') ? proxy.https : proxy.http,
                         // filename: name,
@@ -313,7 +309,7 @@ export class M3u8Service {
                 return
             }
             // results is now an array of the response bodies
-            let errorCount = results.map((item, index) => item === 'error' ? index : null).filter(item => item !== null)
+            const errorCount = results.map((item, index) => item === 'error' ? index : null).filter(item => item !== null)
             const okCount = results.map((item, index) => item === 'ok' ? index : null).filter(item => item !== null)
             console.log('task ok', okCount.length)
             console.log('task error', errorCount.length)
