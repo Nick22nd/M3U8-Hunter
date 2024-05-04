@@ -1,7 +1,6 @@
 // uno.config.ts
-import { defineConfig } from 'unocss'
-import presetUno from '@unocss/preset-uno'
+import { defineConfig, presetWind } from 'unocss'
 
 export default defineConfig({
-  presets: [presetUno()],
+  presets: [presetWind()],
 })
