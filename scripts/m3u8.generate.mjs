@@ -2,9 +2,7 @@
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import fs from 'node:fs'
-import https from 'node:https'
 import http from 'node:http'
-import { pipeline } from 'node:stream'
 import got from 'got'
 import ffmpeg from 'fluent-ffmpeg'
 import { Parser } from 'm3u8-parser'
@@ -18,7 +16,7 @@ console.log('basePath', basePath)
 const sampleFilename = 'first-take.m3u8'
 const mp4Path = join(basePath, 'first-take.mp4')
 console.log(mp4Path)
-async function mp4ToM3u8(mp4Path, m3u8Path) {
+export async function mp4ToM3u8(mp4Path, m3u8Path) {
   return new Promise((resolve, reject) => {
     ffmpeg(mp4Path)
       .addOptions([
@@ -42,7 +40,7 @@ async function mp4ToM3u8(mp4Path, m3u8Path) {
   })
 }
 
-function downloadFileMine(url, targetPath) {
+export function downloadFileMine(url, targetPath) {
   return new Promise((resolve, reject) => {
     const file = fs.createWriteStream(targetPath)
     http.get(url, (response) => {
@@ -97,9 +95,6 @@ function analyseM3u8File(targetPath, sampleFilename) {
   }, 0)
   console.log('streamDuration: ', streamDuration, timeFormat(streamDuration))
   console.log(parser)
-}
-function test() {
-  mp4ToM3u8(mp4Path, join(basePath, sampleFilename))
 }
 
 async function main() {

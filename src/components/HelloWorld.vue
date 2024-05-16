@@ -16,7 +16,7 @@ const msg = ref('')
 async function sendMsg() {
   try {
     log.value += `[render]: ${msg.value} \n`
-    const data = await sendMsgToMainProcess(msg.value)
+    await sendMsgToMainProcess(msg.value)
     // log.value += `[main]: ${data}  \n`
   }
   catch (error) {

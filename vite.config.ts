@@ -1,12 +1,12 @@
 /// <reference types="vitest" />
 import fs from 'node:fs'
+import { join } from 'node:path'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import electron from 'vite-plugin-electron/simple'
-import pkg from './package.json'
 import UnoCSS from 'unocss/vite'
 import AutoImport from 'unplugin-auto-import/vite'
-import { join } from 'path';
+import pkg from './package.json'
 // https://vitejs.dev/config/
 export default defineConfig(({ command }) => {
   fs.rmSync('dist-electron', { recursive: true, force: true })
@@ -70,8 +70,8 @@ export default defineConfig(({ command }) => {
         // See 👉 https://github.com/electron-vite/vite-plugin-electron-renderer
         renderer: {},
       }),
-      AutoImport({ imports: ['vue'], dts: './src/auto-imports.d.ts', }),
-      UnoCSS()
+      AutoImport({ imports: ['vue'], dts: './src/auto-imports.d.ts' }),
+      UnoCSS(),
     ],
     server: process.env.VSCODE_DEBUG && (() => {
       const url = new URL(pkg.debug.env.VITE_DEV_SERVER_URL)
@@ -80,8 +80,8 @@ export default defineConfig(({ command }) => {
         port: +url.port,
         headers: {
           'Cross-Origin-Opener-Policy': 'same-origin',
-          'Cross-Origin-Embedder-Policy': 'require-corp'
-        }
+          'Cross-Origin-Embedder-Policy': 'require-corp',
+        },
       }
     })(),
     clearScreen: false,
@@ -95,7 +95,7 @@ export default defineConfig(({ command }) => {
 
     },
     optimizeDeps: {
-      exclude: ['@ffmpeg/ffmpeg', '@ffmpeg/util']
+      exclude: ['@ffmpeg/ffmpeg', '@ffmpeg/util'],
     },
 
   }

@@ -9,7 +9,7 @@ const routes = [
   { path: '/', component: HomeVue },
   { path: '/about', component: About },
   { path: '/webview', component: WebviewVue },
-  { path: '/tasks', component: TasksVue }
+  { path: '/tasks', component: TasksVue },
 ]
 
 // 3. Create the router instance and pass the `routes` option

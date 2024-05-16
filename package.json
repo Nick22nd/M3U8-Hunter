@@ -1,11 +1,11 @@
 {
   "name": "M3U8-Hunter",
+  "type": "module",
   "version": "0.0.3-alpha",
-  "main": "dist-electron/main/index.js",
+  "private": true,
   "description": "Get m3u8 file from web.",
   "author": "Nick22nd",
   "license": "Apache-2.0",
-  "private": true,
   "keywords": [
     "electron",
     "rollup",
@@ -13,20 +13,25 @@
     "vue3",
     "vue"
   ],
+  "main": "dist-electron/main/index.js",
   "debug": {
     "env": {
       "VITE_DEV_SERVER_URL": "http://127.0.0.1:3344/"
     }
   },
-  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build && electron-builder",
     "preview": "vite preview",
     "test": "vitest",
-    "test-ui": "vitest --ui"
+    "test-ui": "vitest --ui",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
+  },
+  "dependencies": {
   },
   "devDependencies": {
+    "@antfu/eslint-config": "^2.18.0",
     "@chenfengyuan/vue-qrcode": "^2.0.0",
     "@ffmpeg/ffmpeg": "^0.12.10",
     "@ffmpeg/util": "^0.12.1",
@@ -44,6 +49,7 @@
     "electron": "^28.1.0",
     "electron-builder": "^24.9.1",
     "electron-log": "^5.1.1",
+    "electron-store": "^8.2.0",
     "element-plus": "^2.5.1",
     "eslint": "^8.57.0",
     "eslint-plugin-node": "^11.1.0",
@@ -52,6 +58,7 @@
     "fluent-ffmpeg": "^2.1.2",
     "got": "^14.0.0",
     "hls.js": "^1.5.1",
+    "lint-staged": "^15.2.2",
     "lowdb": "^7.0.1",
     "lucide-vue-next": "^0.309.0",
     "m3u8-parser": "^7.1.0",
@@ -59,6 +66,7 @@
     "portfinder": "^1.0.32",
     "prettier": "^3.2.5",
     "qrcode": "1",
+    "simple-git-hooks": "^2.11.1",
     "tree-kill": "^1.2.2",
     "typescript": "^5.3.3",
     "unocss": "^0.58.3",
@@ -71,7 +79,10 @@
     "vue-router": "4",
     "vue-tsc": "^1.8.27"
   },
-  "dependencies": {
-    "electron-store": "^8.2.0"
+  "simple-git-hooks": {
+    "pre-commit": "pnpm lint-staged"
+  },
+  "lint-staged": {
+    "*": "eslint --fix"
   }
 }

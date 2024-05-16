@@ -1,99 +1,65 @@
-<template>
-  <el-container class="h-screen">
-    <el-tabs v-model:model-value="taskStore.activeTab" @tab-change="changeTabs" type="border-card" tab-position="left"
-      class="w-full demo-tabs">
-      <el-tab-pane v-for="tab of tabs" :label="tab.label" :name="tab.label" :key="tab.label">
-        <template #label>
-          <div class="flex justify-between items-center w-20">
-            <el-icon class="mr-3">
-              <component :is="tab.icon"></component>
-            </el-icon>
-            <span class="flex-1 text-left">{{ tab.label }}</span>
-          </div>
-        </template>
-        <component :is="tab.component"></component>
-      </el-tab-pane>
-    </el-tabs>
-    <el-dialog v-model="centerDialogVisible" title="Warning" width="500" center>
-      <span>Task Name: {{ waitingTask?.name }}</span>
-      <el-select v-model="selectedUrl" placeholder="Please select a zone">
-        <el-option v-for="item of playlists" :label="getPlaylistLabel(item)" :value="item.uri" :key="item.uri" />
-      </el-select>
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button @click="centerDialogVisible = false">Cancel</el-button>
-          <el-button type="primary" @click="dowloadTS">
-            Confirm
-          </el-button>
-        </div>
-      </template>
-    </el-dialog>
-    <div class="fixed bottom-0 left-0 m-8">
-      <el-switch inline-prompt v-model="isDark" @change="toggleDark(isDark)" :active-action-icon="Moon"
-        :inactive-action-icon="Sunny" />
-    </div>
-  </el-container>
-</template>
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import About from './pages/About.vue';
-import Home from './pages/Home.vue';
-import Tasks from './pages/Tasks.vue';
-import WebviewVue from './pages/Webview.vue';
-import { TaskItem, MediaMessage, Message4Renderer, MessageName, TabList } from './common.types';
-import { ElNotification, TabPaneName } from 'element-plus';
-import { useFindedMediaStore, useTaskStore } from './stores/';
-import Setting from './pages/Setting.vue';
-import { Film, ListChecks, Settings, Globe, Info } from 'lucide-vue-next';
-import { useDark, useToggle } from '@vueuse/core';
+import type { TabPaneName } from 'element-plus'
+import { ElNotification } from 'element-plus'
+import { Film, Globe, Info, ListChecks, Settings } from 'lucide-vue-next'
+import { useDark, useToggle } from '@vueuse/core'
 import { Moon, Sunny } from '@element-plus/icons-vue'
+import About from './pages/About.vue'
+import Home from './pages/Home.vue'
+import Tasks from './pages/Tasks.vue'
+import WebviewVue from './pages/Webview.vue'
+import type { MediaMessage, Message4Renderer, TaskItem } from './common.types'
+import { MessageName, TabList } from './common.types'
+import { useFindedMediaStore, useTaskStore } from './stores/'
+import Setting from './pages/Setting.vue'
 
 const tabs = [
   {
     label: 'Tasks',
     component: Tasks,
-    icon: ListChecks
+    icon: ListChecks,
   },
   {
     label: 'Player',
     component: Home,
-    icon: Film
+    icon: Film,
   },
   {
     label: 'Explore',
     component: WebviewVue,
-    icon: Globe
+    icon: Globe,
   },
   {
     label: 'Setting',
     component: Setting,
-    icon: Settings
+    icon: Settings,
   },
   {
     label: 'About',
     component: About,
-    icon: Info
+    icon: Info,
   },
 ]
 const taskStore = useTaskStore()
-const tabPosition = ref('left')
+const tabPosition = 'left'
 const centerDialogVisible = ref(false)
-type PlayList = {
+interface PlayList {
   attributes: {
-    CODECS?: string,
-    'FRAME-RATE'?: number,
-    RESOLUTION?: {
+    'CODECS'?: string
+    'FRAME-RATE'?: number
+    'RESOLUTION'?: {
       width: number
       height: number
-    },
-    resolution?: {
+    }
+    'resolution'?: {
       width: number
       height: number
-    },
-    BANDWIDTH?: number,
-    bandwidth?: number,
+    }
+    'BANDWIDTH'?: number
+    'bandwidth'?: number
     'PROGRAM-ID'?: number
-  },
+  }
   uri: string
   timeline: number
 }
@@ -101,24 +67,24 @@ const playlists = ref<PlayList[]>([])
 const selectedUrl = ref('')
 const waitingTask = ref<TaskItem>()
 
-const tasks = ref<TaskItem[]>([])
 const store = useFindedMediaStore()
-const getPlaylistLabel = (playlist: PlayList) => {
-  if (!playlist || !playlist.attributes) return '';
-  const attr = playlist.attributes;
-  if (attr.BANDWIDTH) {
-    return `BANDWIDTH - ${attr.BANDWIDTH}`;
-  }
-  if (attr.bandwidth) {
-    return `BANDWIDTH - ${attr.BANDWIDTH}`;
-  }
-  if (attr.RESOLUTION) {
-    return `RESOLUTION - ${attr.RESOLUTION.width}x${attr.RESOLUTION.height}`;
-  }
-  if (attr.resolution) {
-    return `RESOLUTION - ${attr.resolution.width}x${attr.resolution.height}`;
-  }
-  return 'URI - ' + playlist.uri;
+function getPlaylistLabel(playlist: PlayList) {
+  if (!playlist || !playlist.attributes)
+    return ''
+  const attr = playlist.attributes
+  if (attr.BANDWIDTH)
+    return `BANDWIDTH - ${attr.BANDWIDTH}`
+
+  if (attr.bandwidth)
+    return `BANDWIDTH - ${attr.BANDWIDTH}`
+
+  if (attr.RESOLUTION)
+    return `RESOLUTION - ${attr.RESOLUTION.width}x${attr.RESOLUTION.height}`
+
+  if (attr.resolution)
+    return `RESOLUTION - ${attr.resolution.width}x${attr.resolution.height}`
+
+  return `URI - ${playlist.uri}`
 }
 
 const isDark = useDark()
@@ -130,21 +96,25 @@ onMounted(() => {
   sendMsgToMainProcess({ name: MessageName.getTasks })
   sendMsgToMainProcess({ name: MessageName.getServerConfig })
   onReplyMsg((msg: Message4Renderer) => {
-    const { name, data, type } = msg
+    const { data } = msg
     // console.log('onReplyMsg', msg)
     if (msg.name === MessageName.getTasks) {
       taskStore.tasks = msg.data.tasks || []
-    } else if (msg.name === MessageName.findM3u8) {
+    }
+    else if (msg.name === MessageName.findM3u8) {
       // console.log('findM3u8', data)
       const singleData = data as unknown as MediaMessage
       store.addFindResource(singleData.browserVideoItem)
-    } else if (msg.name === MessageName.getServerConfig) {
+    }
+    else if (msg.name === MessageName.getServerConfig) {
       taskStore.serverConfig = msg.data
-    } else if (msg.name === MessageName.getPlaylist) {
+    }
+    else if (msg.name === MessageName.getPlaylist) {
       playlists.value = msg.data.playlists
       waitingTask.value = msg.data.task
       centerDialogVisible.value = true
-    } else if(msg.name === MessageName.getNotification) {
+    }
+    else if (msg.name === MessageName.getNotification) {
       const { title, message } = msg.data
       ElNotification({
         title,
@@ -154,27 +124,28 @@ onMounted(() => {
     }
   })
 })
-const changeTabs = (name: TabPaneName) => {
+function changeTabs(name: TabPaneName) {
   console.log('changeTabs', name)
-  if (name === TabList.Tasks) {
+  if (name === TabList.Tasks)
     sendMsgToMainProcess({ name: MessageName.getTasks })
-  }
 }
-const dowloadTS = async () => {
+async function dowloadTS() {
   centerDialogVisible.value = false
   if (waitingTask.value) {
     if (selectedUrl.value.startsWith('http')) {
       waitingTask.value.url = selectedUrl.value
-    } else {
-      const url = waitingTask.value.url;
-      let rawURL = new URL(url)
-      let listURI = rawURL.pathname.split('/').pop()
-      let baserawURL = url.substring(0, url.indexOf(listURI ?? ''))
+    }
+    else {
+      const url = waitingTask.value.url
+      const rawURL = new URL(url)
+      const listURI = rawURL.pathname.split('/').pop()
+      const baserawURL = url.substring(0, url.indexOf(listURI ?? ''))
       waitingTask.value.url = `${baserawURL}${selectedUrl.value}`
     }
-  } else {
-    console.error('waitingTask is undefined');
-    return;
+  }
+  else {
+    console.error('waitingTask is undefined')
+    return
   }
   const oldTask = toRaw(waitingTask.value)
   const newTask: TaskItem = {
@@ -184,13 +155,54 @@ const dowloadTS = async () => {
   const dowloadItem: Message4Renderer = {
     name: MessageName.downloadM3u8,
     data: newTask,
-    type: 'download'
+    type: 'download',
   }
-  const data = await sendMsgToMainProcess(dowloadItem)
+  await sendMsgToMainProcess(dowloadItem)
 }
 </script>
 
-
+<template>
+  <el-container class="h-screen">
+    <el-tabs
+      v-model:model-value="taskStore.activeTab" type="border-card" :tab-position="tabPosition"
+      class="w-full demo-tabs" @tab-change="changeTabs"
+    >
+      <el-tab-pane v-for="tab of tabs" :key="tab.label" :label="tab.label" :name="tab.label">
+        <template #label>
+          <div class="flex justify-between items-center w-20">
+            <el-icon class="mr-3">
+              <component :is="tab.icon" />
+            </el-icon>
+            <span class="flex-1 text-left">{{ tab.label }}</span>
+          </div>
+        </template>
+        <component :is="tab.component" />
+      </el-tab-pane>
+    </el-tabs>
+    <el-dialog v-model="centerDialogVisible" title="Warning" width="500" center>
+      <span>Task Name: {{ waitingTask?.name }}</span>
+      <el-select v-model="selectedUrl" placeholder="Please select a zone">
+        <el-option v-for="item of playlists" :key="item.uri" :label="getPlaylistLabel(item)" :value="item.uri" />
+      </el-select>
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="centerDialogVisible = false">
+            Cancel
+          </el-button>
+          <el-button type="primary" @click="dowloadTS">
+            Confirm
+          </el-button>
+        </div>
+      </template>
+    </el-dialog>
+    <div class="fixed bottom-0 left-0 m-8">
+      <el-switch
+        v-model="isDark" inline-prompt :active-action-icon="Moon" :inactive-action-icon="Sunny"
+        @change="toggleDark(isDark)"
+      />
+    </div>
+  </el-container>
+</template>
 
 <style>
 #app {

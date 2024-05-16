@@ -22,7 +22,7 @@ const myRoutes = [
     path: '/tasks',
     name: 'Tasks',
     icon: PersonStanding,
-  }
+  },
 ]
 const themes = {
   icon: {

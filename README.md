@@ -15,13 +15,13 @@ if you are in China or other countries need to use npm mirror, you can use the f
 ELECTRON_MIRROR="https://npmmirror.com/mirrors/electron/" npm i
 ```
 ## run
-    
+
 ```shell
 npm run dev
 ```
 
 ## build
-    
+
 ```shell
 npm run build
 ```
@@ -32,7 +32,7 @@ npm run build
 
 if it show error like this:
 ```shell
-init jsondb error Error: EPERM: operation not permitted, 
+init jsondb error Error: EPERM: operation not permitted,
 ```
 
 you can try to give the app permission to write the file.
@@ -44,7 +44,6 @@ Privacy and Security -> Full Disk Access -> select the folder where the app is l
 - [ ] support m3u8 file that included play list
 - [ ] improve ui
 - [ ] add tutorial
-
 
 ## project
 

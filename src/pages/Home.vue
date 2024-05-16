@@ -1,28 +1,12 @@
-<template>
-  <el-scrollbar height="90vh">
-    <h2 class="font-sans text-xl truncate" :title="taskStore.playerTitle">{{ taskStore.playerTitle }}</h2>
-    <div class="flex justify-between">
-      <el-input v-model="taskStore.playUrl" placeholder="Please input" @change="urlChange" />
-      <el-popover placement="top-start" :width="200" trigger="hover">
-        <template #reference>
-          <el-button>show QR</el-button>
-        </template>
-        <VueQrcode :value="taskStore.playUrl || taskStore.urlPrefix" @ready="onReady"></VueQrcode>
-
-      </el-popover>
-    </div>
-    <div ref="videoDom" class="border w-full"></div>
-
-  </el-scrollbar>
-</template>
-
 <script setup lang="ts">
-import { Ref, onMounted, ref, watch } from 'vue'
+import type { Ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import DPlayer from 'dplayer'
 import Hls from 'hls.js'
-import { useTaskStore } from '../stores';
-import { useStorage } from '@vueuse/core';
-type PlayHistoryItem = {
+import { useStorage } from '@vueuse/core'
+import { useTaskStore } from '../stores'
+
+interface PlayHistoryItem {
   url: string
   time: number
   title: string
@@ -30,7 +14,6 @@ type PlayHistoryItem = {
 const playHistory = useStorage('play-history', [], localStorage) as Ref<PlayHistoryItem[]>
 const taskStore = useTaskStore()
 const videoDom = ref(null)
-const showQRCode = ref(false)
 const dplayer = ref(null as DPlayer | null)
 watch(() => taskStore.playUrl, async (newUrl, oldUrl) => {
   console.log('url', newUrl, oldUrl)
@@ -41,11 +24,12 @@ watch(() => taskStore.playUrl, async (newUrl, oldUrl) => {
     // move to last position
     playHistory.value = playHistory.value.filter(item => item.url !== oldUrl)
     playHistory.value.push(historyItem)
-  } else {
+  }
+  else {
     historyItem = {
       url: newUrl,
       time: dplayer.value?.video.currentTime || 0,
-      title: taskStore.playerTitle
+      title: taskStore.playerTitle,
     }
     playHistory.value.push(historyItem)
   }
@@ -55,22 +39,21 @@ watch(() => taskStore.playUrl, async (newUrl, oldUrl) => {
       dplayer.value.switchVideo({
         url: newUrl,
         type: 'auto',
-        // @ts-ignore
+        // @ts-expect-error dplayer type error
       }, undefined)
-
     }
     dplayer.value.switchVideo({
       url: newUrl,
       type: 'customHls',
       customType: {
-        customHls(video: HTMLMediaElement, player: any) {
+        customHls(video: HTMLMediaElement, _player: any) {
           const hls = new Hls()
           hls.loadSource(video.src)
           hls.attachMedia(video)
         },
       },
 
-      // @ts-ignore
+      // @ts-expect-error dplayer type error
     }, undefined)
     const lastViewTime = playHistory.value.find(item => item.url === newUrl)?.time || 0
     setTimeout(() => {
@@ -113,7 +96,7 @@ function onReady() {
 }
 function urlChange() {
   console.log('urlChange', taskStore.playUrl)
-  if (dplayer.value)
+  if (dplayer.value) {
     dplayer.value.switchVideo({
       url: taskStore.playUrl,
       type: 'customHls',
@@ -125,8 +108,28 @@ function urlChange() {
           hls.attachMedia(video)
         },
       },
-      // @ts-ignore
+    // @ts-expect-error dplayer type error
     }, {})
+  }
 }
 </script>
+
+<template>
+  <el-scrollbar height="90vh">
+    <h2 class="font-sans text-xl truncate" :title="taskStore.playerTitle">
+      {{ taskStore.playerTitle }}
+    </h2>
+    <div class="flex justify-between">
+      <el-input v-model="taskStore.playUrl" placeholder="Please input" @change="urlChange" />
+      <el-popover placement="top-start" :width="200" trigger="hover">
+        <template #reference>
+          <el-button>show QR</el-button>
+        </template>
+        <VueQrcode :value="taskStore.playUrl || taskStore.urlPrefix" @ready="onReady" />
+      </el-popover>
+    </div>
+    <div ref="videoDom" class="border w-full" />
+  </el-scrollbar>
+</template>
+
 <style scoped></style>
