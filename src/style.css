@@ -94,3 +94,13 @@ code {
     background-color: #f9f9f9;
   }
 }
+@font-face {
+  font-family: system;
+  font-style: normal;
+  font-weight: 300;
+  src: local(".NewYork-Regular");
+}
+
+h1 {
+  font-family: "system";
+}
