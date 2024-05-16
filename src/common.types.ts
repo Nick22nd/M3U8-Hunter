@@ -10,6 +10,8 @@ export enum MessageName {
     openUrl,
     getPlaylist,
     getNotification,
+    setAppDataDir,
+    openAppDir,
 }
 export type Message4Renderer = {
     type: string

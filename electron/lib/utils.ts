@@ -2,6 +2,9 @@ import os from 'node:os'
 import path from 'node:path'
 import fsExtra from 'fs-extra'
 import { join, dirname } from 'node:path'
+import Store from 'electron-store'
+
+const store = new Store();
 
 export function getDefaultLogDir(appName) {
     switch (process.platform) {
@@ -18,10 +21,15 @@ export function getDefaultLogDir(appName) {
 }
 
 export function getAppDataDir() {
-    const devDir = import.meta.env && import.meta.env.VITE_TMPDIR
-    const appDir = devDir ? devDir : join(os.homedir(), 'M3U8Hunter');
-    fsExtra.ensureDirSync(appDir)
-    return appDir;
+    const tmpDir = store.get('config.appDir') as string
+    if (tmpDir && fsExtra.pathExistsSync(tmpDir)) {
+        return store.get('config.appDir')
+    } else {
+        const devDir = import.meta.env && import.meta.env.VITE_TMPDIR
+        const appDir = devDir ? devDir : join(os.homedir(), 'M3U8Hunter');
+        fsExtra.ensureDirSync(appDir)
+        return appDir;
+    }
 }
 
 export function timeFormat(streamDuration: number) {

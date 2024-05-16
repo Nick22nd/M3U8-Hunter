@@ -11,6 +11,8 @@ import { getDefaultLogDir } from '../lib/utils'
 import { DialogService } from '../service/dialog.service'
 import { ServiceContainer } from './app'
 import { Sniffer } from '../service/sniffer.service'
+import Store from 'electron-store'
+import { dialog } from 'electron'
 
 globalThis.__filename = fileURLToPath(import.meta.url)
 globalThis.__dirname = dirname(__filename)
@@ -55,6 +57,7 @@ const indexHtml = join(process.env.DIST, 'index.html')
 // run express server
 export let serviceHub: ServiceContainer
 
+const store = new Store();
 function registerService() {
   runServe()
   const dialogService = new DialogService(win)
@@ -159,10 +162,28 @@ const handlers = {
     const logDir = getDefaultLogDir(app.name)
     shell.openPath(logDir)
   },
+  [MessageName.openAppDir]: () => {
+    const appPath = app.getPath('userData')
+    shell.openPath(appPath)
+  },
   [MessageName.openUrl]: async (data: string) => {
     console.log('openUrl', data)
     shell.openExternal(data)
   },
+  [MessageName.setAppDataDir]: () => {
+    console.log('dialog')
+    dialog.showOpenDialog({
+      properties: ['openDirectory']
+    }).then(result => {
+      if (!result.canceled) {
+        const selectedDirectory = result.filePaths[0];
+        console.log(selectedDirectory);
+        store.set('config.appDir', selectedDirectory)
+        app.relaunch()
+        app.exit()
+      }
+    });
+  }
 }
 
 ipcMain.handle('msg', async (event, arg) => {
