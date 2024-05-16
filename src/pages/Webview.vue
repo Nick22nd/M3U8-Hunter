@@ -205,7 +205,7 @@ async function download(row: MediaMessage) {
         </el-table>
       </el-popover>
     </TopBar>
-    <webview ref="webview" :src="url" class="flex-1 w-full" preload="./preload.js" allowpopups />
+    <webview ref="webview" :src="url" class="flex-1 w-full" allowpopups />
   </div>
 </template>
 

@@ -115,7 +115,7 @@ function urlChange() {
 </script>
 
 <template>
-  <el-scrollbar height="90vh">
+  <el-scrollbar height="95vh">
     <h2 class="font-sans text-xl truncate" :title="taskStore.playerTitle">
       {{ taskStore.playerTitle }}
     </h2>

@@ -241,7 +241,7 @@ body.dark {
 }
 
 .demo-tabs>.el-tabs__content {
-  padding: 32px;
+  padding: 0px;
   /* color: #6b778c; */
   /* font-size: 32px; */
   font-weight: 600;
