@@ -57,7 +57,7 @@
     "express": "^4.18.3",
     "fluent-ffmpeg": "^2.1.2",
     "got": "^14.0.0",
-    "hls.js": "^1.5.1",
+    "hls.js": "^1.5.8",
     "lint-staged": "^15.2.2",
     "lowdb": "^7.0.1",
     "lucide-vue-next": "^0.309.0",
