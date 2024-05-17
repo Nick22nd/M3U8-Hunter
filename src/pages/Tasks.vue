@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, toRaw } from 'vue'
-import { ElMessageBox } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Check, FolderClosed, Link, Pause, Play, RefreshCw, Trash, Youtube } from 'lucide-vue-next'
 import type { Message4Renderer, TaskItem } from '../common.types'
 import { MessageName, TabList } from '../common.types'
@@ -59,7 +59,7 @@ function deleteItem(task: TaskItem) {
       // catch error
     })
 }
-function startTask(task: TaskItem) {
+function _startTask(task: TaskItem) {
   console.log('handleClick', toRaw(task))
   const newTask = {
     ...toRaw(task),
@@ -101,15 +101,35 @@ function openLink(task: TaskItem) {
 }
 function restart(task: TaskItem) {
   console.log('handleClick', toRaw(task))
-  const newTask = {
-    ...toRaw(task),
-  }
-  const newMessage: Message4Renderer = {
-    name: MessageName.downloadM3u8,
-    data: newTask,
-    type: 'download',
-  }
-  sendMsgToMainProcess(newMessage)
+  ElMessageBox.prompt('Please input new m3u8 url', 'Tip', {
+    confirmButtonText: 'OK',
+    cancelButtonText: 'Cancel',
+    inputPattern:
+      /https?:\/\/\S+/,
+    inputErrorMessage: 'Invalid Url',
+  })
+    .then(({ value }) => {
+      ElMessage({
+        type: 'success',
+        message: `Your m3u8 is:${value}`,
+      })
+      const newTask = {
+        ...toRaw(task),
+        url: value,
+      }
+      const newMessage: Message4Renderer = {
+        name: MessageName.downloadM3u8,
+        data: newTask,
+        type: 'download',
+      }
+      sendMsgToMainProcess(newMessage)
+    })
+    .catch(() => {
+      ElMessage({
+        type: 'info',
+        message: 'Input canceled',
+      })
+    })
 }
 function pauseTask(task: TaskItem) {
   console.log('handleClick', toRaw(task))
@@ -172,7 +192,7 @@ function resumeTask(task: TaskItem) {
           <el-tag v-else-if="scope.row.status === 'failed'" type="danger">
             {{ scope.row.status }}
           </el-tag>
-          <el-tag v-else-if="scope.row.status === 'paused'" type="warning">
+          <el-tag v-else-if="['paused', 'unfinished'].includes(scope.row.status)" type="warning">
             {{ scope.row.status }}
           </el-tag>
         </template>

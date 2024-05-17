@@ -26,7 +26,7 @@ export interface TaskItem {
     [key: string]: string
   }
   type?: string
-  status: 'downloading' | 'downloaded' | 'failed' | 'paused' | 'success' | 'waiting'
+  status: 'downloading' | 'downloaded' | 'failed' | 'paused' | 'success' | 'waiting' | 'unfinished'
   duration?: number
   durationStr?: string
   name?: string

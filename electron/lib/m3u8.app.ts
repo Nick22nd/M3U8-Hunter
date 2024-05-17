@@ -66,7 +66,6 @@ export class M3u8Service {
             status: 'downloaded',
             duration,
             durationStr: timeFormat(duration),
-            createTime: new Date().getTime(),
             directory: targetPath,
           }
           await jsondb.update(newTask)

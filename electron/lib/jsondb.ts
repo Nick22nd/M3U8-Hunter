@@ -39,6 +39,20 @@ class JSONDB {
     await this.db.write()
   }
 
+  public async checkStatus() {
+    const tasks = this.db.data.tasks as TaskItem[]
+    const newTasks = tasks.map((item) => {
+      if (item.segmentCount === item.downloadedCount && item.status !== 'downloaded')
+        return { ...item, status: 'downloaded' }
+      else if (item.segmentCount > item.downloadedCount && item.status !== 'downloading')
+        return { ...item, status: 'unfinished' }
+
+      return item
+    })
+    this.db.data.tasks = newTasks
+    await this.db.write()
+  }
+
   public async update(task: TaskItem) {
     // console.log('update', task)
     try {
@@ -57,6 +71,7 @@ class JSONDB {
 
   public async getDB() {
     this.removeDuplicate()
+    this.checkStatus()
     return this.db.data
   }
 }
