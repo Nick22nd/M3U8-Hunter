@@ -42,9 +42,9 @@ class JSONDB {
   public async update(task: TaskItem) {
     // console.log('update', task)
     try {
-      const isExist = this.db.data.tasks.some(item => item.url === task.url)
+      const isExist = this.db.data.tasks.some(item => item.createTime === task.createTime)
       if (isExist)
-        this.db.data.tasks = this.db.data.tasks.map(item => item.url === task.url ? task : item)
+        this.db.data.tasks = this.db.data.tasks.map(item => item.createTime === task.createTime ? task : item)
       else
         this.db.data.tasks.push(task)
 

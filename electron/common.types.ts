@@ -12,6 +12,8 @@ export enum MessageName {
   getNotification,
   setAppDataDir,
   openAppDir,
+  pauseTask,
+  resumeTask,
 }
 export interface Message4Renderer {
   type: string

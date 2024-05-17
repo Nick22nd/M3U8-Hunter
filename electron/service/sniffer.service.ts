@@ -16,7 +16,8 @@ export class Sniffer {
       }
       // const id = details.webContentsId
 
-      if (/http.*\.(?:mp4|m3u8|flv|mp3|mpd|wav)\?/.test(details.url)) {
+      // eslint-disable-next-line regexp/no-unused-capturing-group
+      if (/http.*\.((mp4)|(m3u8)|(flv)|(mp3)|(mpd)|(wav))(\?|$)/.test(details.url)) {
         const [_null, _type] = details.url.match(/http.*\.((mp4)|(m3u8)|(flv)|(mp3)|(mpd)|(wav))(\?|$)/)
 
         // if (!details.url.includes('/hls') || details.url.includes('480p') || details.url.includes('live')) {

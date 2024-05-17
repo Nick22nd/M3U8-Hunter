@@ -144,12 +144,21 @@ const handlers = {
   [MessageName.startTask]: async (data: TaskItem) => {
     console.log('startTask', data)
     try {
-      // await appService.downloadM3u8(_item)
-      await downloadTS(data)
+      await serviceHub.m3u8Service.downloadTS(data)
     }
     catch (error) {
       console.log('error', error)
     }
+  },
+  [MessageName.pauseTask]: async (data: TaskItem) => {
+    console.log('pauseTask', data)
+    await serviceHub.m3u8Service.pauseTask(data)
+    handlers[MessageName.getTasks]()
+  },
+  [MessageName.resumeTask]: async (data: TaskItem) => {
+    console.log('resumeTask', data)
+    await serviceHub.m3u8Service.resumeTask(data)
+    handlers[MessageName.getTasks]()
   },
   [MessageName.openDir]: async (data: string) => {
     shell.openPath(data)

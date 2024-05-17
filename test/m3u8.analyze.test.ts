@@ -1,5 +1,5 @@
 import path from 'node:path'
-import { expect } from 'vitest'
+import { expect, it } from 'vitest'
 import { M3u8Service } from '../electron/lib/m3u8.app'
 import { DialogService } from '../electron/service/dialog.service'
 

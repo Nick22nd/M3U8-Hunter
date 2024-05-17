@@ -151,6 +151,15 @@ async function download(row: MediaMessage) {
     console.error(error)
   }
 }
+function writeClipboard(row: MediaMessage) {
+  const rowRaw = toRaw(row)
+  console.log('writeClipboard', row)
+  navigator.clipboard.writeText(rowRaw.url)
+  ElMessage({
+    type: 'success',
+    message: 'Copy success',
+  })
+}
 </script>
 
 <template>
@@ -195,10 +204,13 @@ async function download(row: MediaMessage) {
           <el-table-column :show-overflow-tooltip="true" class="truncate" width="300" property="url" label="url" />
           <!-- <el-table-column :show-overflow-tooltip="true" class="truncate" width="150" property="headers"
             label="headers" /> -->
-          <el-table-column fixed="right" label="Operations" width="120">
+          <el-table-column fixed="right" label="Operations" width="150">
             <template #default="scope">
               <el-button link type="primary" size="small" @click.prevent="download(scope.row)">
                 download
+              </el-button>
+              <el-button link type="primary" size="small" @click.prevent="writeClipboard(scope.row)">
+                copy
               </el-button>
             </template>
           </el-table-column>

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, toRaw } from 'vue'
 import { ElMessageBox } from 'element-plus'
-import { FolderClosed, Link, Play, RefreshCw, Trash, Youtube } from 'lucide-vue-next'
+import { Check, FolderClosed, Link, Pause, Play, RefreshCw, Trash, Youtube } from 'lucide-vue-next'
 import type { Message4Renderer, TaskItem } from '../common.types'
 import { MessageName, TabList } from '../common.types'
 import { useTaskStore } from '../stores'
@@ -111,14 +111,37 @@ function restart(task: TaskItem) {
   }
   sendMsgToMainProcess(newMessage)
 }
+function pauseTask(task: TaskItem) {
+  console.log('handleClick', toRaw(task))
+  const newTask = {
+    ...toRaw(task),
+    status: 'paused',
+  }
+  const newMessage: Message4Renderer = {
+    name: MessageName.pauseTask,
+    data: newTask,
+    type: 'download',
+  }
+  sendMsgToMainProcess(newMessage)
+}
+function resumeTask(task: TaskItem) {
+  console.log('handleClick', toRaw(task))
+  const newTask = {
+    ...toRaw(task),
+    status: 'downloading',
+  }
+  const newMessage: Message4Renderer = {
+    name: MessageName.resumeTask,
+    data: newTask,
+    type: 'download',
+  }
+  sendMsgToMainProcess(newMessage)
+}
 </script>
 
 <template>
   <div class="h-full">
-    <el-table
-      :data="filterTableData" style="" max-height="95vh"
-      @selection-change="handleSelectionChange"
-    >
+    <el-table :data="filterTableData" style="" max-height="95vh" @selection-change="handleSelectionChange">
       <el-table-column type="selection" width="55" />
       <!-- <el-table-column property="name" label="Name" width="150">
                 <template #default="scope">
@@ -149,6 +172,9 @@ function restart(task: TaskItem) {
           <el-tag v-else-if="scope.row.status === 'failed'" type="danger">
             {{ scope.row.status }}
           </el-tag>
+          <el-tag v-else-if="scope.row.status === 'paused'" type="warning">
+            {{ scope.row.status }}
+          </el-tag>
         </template>
       </el-table-column>
       <el-table-column property="title" label="Title" width="400" class="truncate">
@@ -165,8 +191,20 @@ function restart(task: TaskItem) {
         <template #default="scope">
           <div class="flex justify-start items-center flex-wrap">
             <div class="m-r-3">
-              <el-button link type="primary" size="small" @click="startTask(scope.row)">
+              <el-button
+                v-if="scope.row.status === 'paused'" link type="primary" size="small"
+                @click="resumeTask(scope.row)"
+              >
                 <Play title="start" />
+              </el-button>
+              <el-button
+                v-else-if="scope.row.status === 'downloading'" link type="primary" size="small"
+                @click="pauseTask(scope.row)"
+              >
+                <Pause title="pause" />
+              </el-button>
+              <el-button v-else-if="scope.row.status === 'downloaded'" link type="primary" size="small">
+                <Check title="ok" />
               </el-button>
               <el-button link type="primary" size="small" @click="deleteItem(scope.row)">
                 <Trash title="delete" />

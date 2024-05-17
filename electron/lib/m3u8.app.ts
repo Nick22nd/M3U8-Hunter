@@ -3,13 +3,13 @@ import { join } from 'node:path'
 import { Parser } from 'm3u8-parser'
 import download from 'download'
 import fsExtra from 'fs-extra'
-import async from 'async'
 import Logger from 'electron-log'
 import type { DialogService } from '../service/dialog.service'
 import type { TaskItem } from '../common.types'
 import { getAppDataDir, timeFormat } from './utils'
 
 import { jsondb } from './jsondb'
+import { TaskManager } from './promiseLimit'
 
 export class M3u8Service {
   // static storagePath = getAppDataDir()
@@ -21,6 +21,7 @@ export class M3u8Service {
 
   storagePath: any
   dialogService: DialogService
+  m3u8Tasks: Map<string, TaskManager> = new Map()
   constructor(dialogService: DialogService) {
     this.dialogService = dialogService
     this.storagePath = getAppDataDir()
@@ -169,6 +170,22 @@ export class M3u8Service {
     }
   }
 
+  async pauseTask(task: TaskItem) {
+    await jsondb.update(task)
+    const taskM = this.m3u8Tasks.get(task.url)
+    if (taskM)
+      taskM.pause()
+  }
+
+  async resumeTask(task: TaskItem) {
+    await jsondb.update(task)
+    const taskM = this.m3u8Tasks.get(task.url)
+    if (taskM)
+      taskM.resume()
+    else
+      this.downloadTS(task)
+  }
+
   /**
    * analyze the M3U8 file return segments or playlists
    * @param targetPath file directory
@@ -241,6 +258,16 @@ export class M3u8Service {
         Logger.error('[download] error key', url, err)
       }
     }
+    if (this.m3u8Tasks.has(task.url)) {
+      const taskM = this.m3u8Tasks.get(task.url)
+      if (taskM.paused) {
+        taskM.resume()
+        return
+      }
+      else {
+        return
+      }
+    }
     // check if segments existed
     const existedSegments = fs.readdirSync(tsDir)
     console.log('existedSegments', existedSegments.length)
@@ -264,65 +291,72 @@ export class M3u8Service {
       segmentCount,
       downloadedCount,
       progress: `${downloadedCount}/${segmentCount}`,
+      status: downloadedCount === segmentCount ? 'downloaded' : 'downloading',
     })
     const newTaskArray = await jsondb.getDB()
     this.dialogService.updateProgress(newTaskArray)
     console.log('count', count)
 
-    async.mapLimit(segments, 5, async (segment) => {
-      // console.log('segment', segment)
-      try {
-        let url = ''
-        if (segment.uri.startsWith('http') || segment.uri.startsWith('https'))
-          url = segment.uri
-        else
-          url = `${baseURL}${segment.uri}`
+    const promiseList = segments.map((segment, _index) => {
+      // eslint-disable-next-line no-async-promise-executor
+      return () => new Promise(async (resolve) => {
+        // console.log('segment', segment)
+        try {
+          let url = ''
+          if (segment.uri.startsWith('http') || segment.uri.startsWith('https'))
+            url = segment.uri
+          else
+            url = `${baseURL}${segment.uri}`
 
-        const segmentFile = new URL(url).pathname.split('/').pop()
-        // const name = segment.uri
-        if (fs.existsSync(join(tsDir, segmentFile))) {
-          // log.info('[download] already existed, skip segment', segment)
-          // downloadedCount++
-          return 'existed'
+          const segmentFile = new URL(url).pathname.split('/').pop()
+          // const name = segment.uri
+          if (fs.existsSync(join(tsDir, segmentFile))) {
+            // log.info('[download] already existed, skip segment', segment)
+            // downloadedCount++
+            resolve({ state: 'existed', url })
+          }
+          else {
+            await download(url, tsDir, {
+              headers: task.headers,
+              // agent: url.startsWith('https') ? proxy.https : proxy.http,
+              // filename: name,
+              retry: {
+                retries: 3,
+              },
+            })
+            downloadedCount++
+            const status = downloadedCount === segmentCount ? 'downloaded' : 'downloading'
+            await jsondb.update({
+              ...task,
+              segmentCount,
+              downloadedCount,
+              progress: `${downloadedCount}/${segmentCount}`,
+              status,
+            })
+            const newTaskArray = await jsondb.getDB()
+            this.dialogService.updateProgress(newTaskArray)
+            resolve({ state: 'ok', url })
+          }
         }
-        else {
-          await download(url, tsDir, {
-            headers: task.headers,
-            // agent: url.startsWith('https') ? proxy.https : proxy.http,
-            // filename: name,
-            retry: {
-              retries: 3,
-            },
-          })
-          downloadedCount++
-          await jsondb.update({
-            ...task,
-            segmentCount,
-            downloadedCount,
-            progress: `${downloadedCount}/${segmentCount}`,
-          })
-          const newTaskArray = await jsondb.getDB()
-          this.dialogService.updateProgress(newTaskArray)
-          return 'ok'
+        catch (error) {
+          console.error(error)
+          const url = `${baseURL}${segment.uri}`
+          Logger.error('[download] error segment', url, error)
+          resolve({ state: 'error', url })
         }
-      }
-      catch (error) {
-        console.error(error)
-        const url = `${baseURL}${segment.uri}`
-        Logger.error('[download] error segment', url, error)
-        return 'error'
-      }
-    }, (err, results) => {
-      if (err) {
-        console.error(err)
-        Logger.error('[download] error', err)
-        return
-      }
-      // results is now an array of the response bodies
-      const errorCount = results.map((item, index) => item === 'error' ? index : null).filter(item => item !== null)
-      const okCount = results.map((item, index) => item === 'ok' ? index : null).filter(item => item !== null)
+      })
+    })
+    const taskM = new TaskManager(promiseList)
+    this.m3u8Tasks.set(task.url, taskM)
+    taskM.run(5).then(() => {
+      const results = taskM.res
+      const errorCount = results.map((item, index) => item.state === 'error' ? index : null).filter(item => item !== null)
+      const okCount = results.map((item, index) => item.state === 'ok' ? index : null).filter(item => item !== null)
       console.log('task ok', okCount.length)
       console.log('task error', errorCount.length)
+    }).catch((error) => {
+      console.error(error)
+      Logger.error('[download] error', error)
     })
   }
 }
