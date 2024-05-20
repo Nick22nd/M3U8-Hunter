@@ -110,7 +110,7 @@ export class M3u8Service {
             status: 'downloaded',
             duration,
             durationStr: timeFormat(duration),
-            createTime: new Date().getTime(),
+            createTime: videoItem.createTime || new Date().getTime(),
             directory: targetPath,
           }
           await jsondb.update(newTask)
@@ -174,6 +174,8 @@ export class M3u8Service {
     const taskM = this.m3u8Tasks.get(task.url)
     if (taskM)
       taskM.pause()
+    else
+      this.downloadTS(task)
   }
 
   async resumeTask(task: TaskItem) {
@@ -347,12 +349,30 @@ export class M3u8Service {
     })
     const taskM = new TaskManager(promiseList)
     this.m3u8Tasks.set(task.url, taskM)
-    taskM.run(5).then(() => {
+    taskM.run(5).then(async () => {
       const results = taskM.res
       const errorCount = results.map((item, index) => item.state === 'error' ? index : null).filter(item => item !== null)
       const okCount = results.map((item, index) => item.state === 'ok' ? index : null).filter(item => item !== null)
       console.log('task ok', okCount.length)
       console.log('task error', errorCount.length)
+      const newTaskArrays = await jsondb.getDB()
+      const newTask = newTaskArrays.tasks.find(item => item.createTime === task.createTime)
+      if (taskM.paused && taskM.res.length !== taskM.tasks.length) {
+        await jsondb.update({
+          ...newTask,
+          status: 'paused',
+        })
+        const newTaskArray = await jsondb.getDB()
+        this.dialogService.updateProgress(newTaskArray)
+      }
+      if (errorCount.length > 0) {
+        await jsondb.update({
+          ...newTask,
+          status: 'failed',
+        })
+        const newTaskArray = await jsondb.getDB()
+        this.dialogService.updateProgress(newTaskArray)
+      }
     }).catch((error) => {
       console.error(error)
       Logger.error('[download] error', error)

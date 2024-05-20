@@ -212,7 +212,7 @@ function resumeTask(task: TaskItem) {
           <div class="flex justify-start items-center flex-wrap">
             <div class="m-r-3">
               <el-button
-                v-if="scope.row.status === 'paused'" link type="primary" size="small"
+                v-if="['paused', 'unfinished'].includes(scope.row.status)" link type="primary" size="small"
                 @click="resumeTask(scope.row)"
               >
                 <Play title="start" />

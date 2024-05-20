@@ -44,8 +44,8 @@ class JSONDB {
     const newTasks = tasks.map((item) => {
       if (item.segmentCount === item.downloadedCount && item.status !== 'downloaded')
         return { ...item, status: 'downloaded' }
-      else if (item.segmentCount > item.downloadedCount && item.status !== 'downloading')
-        return { ...item, status: 'unfinished' }
+      // else if (item.segmentCount > item.downloadedCount && item.status !== 'downloading')
+      //   return { ...item, status: 'unfinished' }
 
       return item
     })

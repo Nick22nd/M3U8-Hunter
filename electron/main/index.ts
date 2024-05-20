@@ -7,7 +7,6 @@ import Store from 'electron-store'
 import { M3u8Service } from '../lib/m3u8.app'
 import type { Message4Renderer, TaskItem } from '../common.types'
 import { MessageName } from '../common.types'
-import { downloadTS } from '../lib/m3u8.download'
 import { runServe, serverConfig } from '../service/web.app'
 import { getDefaultLogDir } from '../lib/utils'
 import { DialogService } from '../service/dialog.service'
@@ -153,7 +152,6 @@ const handlers = {
   [MessageName.pauseTask]: async (data: TaskItem) => {
     console.log('pauseTask', data)
     await serviceHub.m3u8Service.pauseTask(data)
-    handlers[MessageName.getTasks]()
   },
   [MessageName.resumeTask]: async (data: TaskItem) => {
     console.log('resumeTask', data)

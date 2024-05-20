@@ -62,6 +62,18 @@ onMounted(() => {
   webview.value?.addEventListener('dom-ready', () => {
     console.log('dom-ready')
     // webview.value?.openDevTools()
+    webview.value?.insertCSS(`
+      @font-face {
+        font-family: system;
+        font-style: normal;
+        font-weight: 300;
+        src: local(".NewYork-Regular");
+      }
+  
+      h1 {
+        font-family: "system";
+      }
+    `)
   })
   webview.value?.addEventListener('new-window', (e: any) => {
     console.log('new-window', e)

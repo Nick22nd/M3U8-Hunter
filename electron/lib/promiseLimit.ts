@@ -46,8 +46,10 @@ export class TaskManager {
       let index = 0
       const next = () => {
         if (this.paused) {
-          if (running === 0)
+          if (running === 0) {
             console.log('paused', this.res.length)
+            resolve()
+          }
           return
         }
         if (running >= limit)
