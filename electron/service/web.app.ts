@@ -7,6 +7,7 @@ import { getAppDataDir } from '../lib/utils'
 export const serverConfig = {
   ip: 'localhost',
   port: 3000,
+  serverStarted: false,
 }
 async function main() {
   const app = express()
@@ -32,7 +33,7 @@ async function main() {
   const server = app.listen(port, () => {
     const address = server.address()
     const host = address.address
-
+    serverConfig.serverStarted = true
     console.log(`Server running at http://${host}:${port}/`)
   })
   try {

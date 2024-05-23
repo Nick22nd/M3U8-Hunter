@@ -61,12 +61,18 @@ export let serviceHub: ServiceContainer
 
 const store = new Store()
 function registerService() {
-  runServe()
-  const dialogService = new DialogService(win)
-  const m3u8Service = new M3u8Service(dialogService)
-  const snifferService = new Sniffer(win)
-  snifferService.m3u8Find()
-  serviceHub = new ServiceContainer(dialogService, m3u8Service)
+  try {
+    if (!serverConfig.serverStarted)
+      runServe()
+    const dialogService = new DialogService(win)
+    const m3u8Service = new M3u8Service(dialogService)
+    const snifferService = new Sniffer(win)
+    snifferService.m3u8Find()
+    serviceHub = new ServiceContainer(dialogService, m3u8Service)
+  }
+  catch (error) {
+    console.log('error', error)
+  }
 }
 async function createWindow() {
   win = new BrowserWindow({
@@ -209,6 +215,7 @@ ipcMain.handle('msg', async (event, arg) => {
 app.whenReady().then(createWindow)
 
 app.on('window-all-closed', () => {
+  console.log('window-all-closed')
   win = null
   if (process.platform !== 'darwin')
     app.quit()
