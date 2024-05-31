@@ -16,7 +16,11 @@ const canGoForward = ref(false)
 const domReady = ref(false)
 const { sendMsg: sendMsgToMainProcess } = window.electron
 const url = ref('')
+interface HistoryRecord {
+  [key: string]: number
+}
 const history = useStorage('history', [], localStorage) as Ref<string[]>
+const historyRecord = useStorage('historyRecord', {}, localStorage) as Ref<HistoryRecord>
 type webviewType = Electron.WebviewTag | null
 const webview = ref(null) as Ref<webviewType>
 const taskStore = useTaskStore()
@@ -57,6 +61,12 @@ function goForward() {
 
 onMounted(() => {
   console.log('mounted', webview.value)
+  if (Object.keys(historyRecord.value).length === 0) {
+    historyRecord.value = history.value.reduce((acc, cur) => {
+      acc[cur] = 1
+      return acc
+    }, {} as HistoryRecord)
+  }
   url.value = history.value.at(-1) || ''
   inputUrl.value = url.value
   webview.value?.addEventListener('dom-ready', () => {
@@ -84,6 +94,11 @@ onMounted(() => {
   const navigateEvent = (e: { url: string }) => {
     console.log('will-navigate', e.url)
     url.value = e.url
+    if (!historyRecord.value[e.url])
+      historyRecord.value[e.url] = 1
+    else
+      historyRecord.value[e.url] += 1
+
     if (!history.value.includes(e.url)) {
       history.value.push(e.url)
     }
