@@ -158,6 +158,7 @@ async function dowloadTS() {
     type: 'download',
   }
   await sendMsgToMainProcess(dowloadItem)
+  selectedUrl.value = ''
 }
 </script>
 

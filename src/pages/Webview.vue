@@ -94,10 +94,6 @@ onMounted(() => {
   const navigateEvent = (e: { url: string }) => {
     console.log('will-navigate', e.url)
     url.value = e.url
-    if (!historyRecord.value[e.url])
-      historyRecord.value[e.url] = 1
-    else
-      historyRecord.value[e.url] += 1
 
     if (!history.value.includes(e.url)) {
       history.value.push(e.url)
@@ -119,6 +115,10 @@ onMounted(() => {
     canGoBack.value = webview.value?.canGoBack() || false
     canGoForward.value = webview.value?.canGoForward() || false
     clearFindResource()
+    if (!historyRecord.value[e.url])
+      historyRecord.value[e.url] = 1
+    else
+      historyRecord.value[e.url] += 1
   })
   webview.value?.addEventListener('dom-ready', () => {
     console.log('dom-ready')

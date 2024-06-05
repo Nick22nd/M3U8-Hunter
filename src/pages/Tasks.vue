@@ -163,12 +163,6 @@ function resumeTask(task: TaskItem) {
   <div class="h-full">
     <el-table :data="filterTableData" style="" max-height="95vh" @selection-change="handleSelectionChange">
       <el-table-column type="selection" width="55" />
-      <!-- <el-table-column property="name" label="Name" width="150">
-                <template #default="scope">
-                    <el-text class="truncate" :title="scope.row.name">{{ scope.row.name }}</el-text>
-                </template>
-</el-table-column> -->
-
       <el-table-column label="Progress" width="100">
         <template #default="scope">
           <div class="flex flex-col justify-center">
@@ -206,7 +200,7 @@ function resumeTask(task: TaskItem) {
       </el-table-column>
       <el-table-column fixed="right" label="Operations" min-width="150">
         <template #header>
-          <el-input v-model="search" size="small" placeholder="Type to search" />
+          <el-input v-model="search" size="small" placeholder="Type to search" clearable />
         </template>
         <template #default="scope">
           <div class="flex justify-start items-center flex-wrap">
