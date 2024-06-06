@@ -5,7 +5,7 @@ import { Parser } from 'm3u8-parser'
 import async from 'async'
 import log from 'electron-log/main'
 import type { TaskItem } from '../common.types'
-import { serviceHub } from '../main'
+import { serviceHub } from '../index'
 import { jsondb } from './jsondb'
 
 // Optional, initialize the logger for any renderer process

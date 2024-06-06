@@ -1,5 +1,5 @@
-import type { M3u8Service } from '../lib/m3u8.app'
-import type { DialogService } from '../service/dialog.service'
+import type { M3u8Service } from './lib/m3u8.app'
+import type { DialogService } from './service/dialog.service'
 
 export class ServiceContainer {
   dialogService: DialogService

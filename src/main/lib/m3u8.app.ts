@@ -34,7 +34,7 @@ export class M3u8Service {
 
   public async getTasks() {
     // jsondb.init()
-    const data = await jsondb.getDB()
+    const data = await jsondb.getDB() as TaskItem[]
     // console.log('data', data)
     return data
   }
