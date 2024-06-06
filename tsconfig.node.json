@@ -9,11 +9,11 @@
   "include": [
     "vite.config.ts",
     "package.json",
-    "electron"
+    "src/main"
   ],
   "path": {
     "@main/*": [
-      "electron/*"
+      "src/main/*"
     ]
   }
 }

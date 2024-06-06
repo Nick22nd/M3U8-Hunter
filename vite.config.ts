@@ -28,7 +28,7 @@ export default defineConfig(({ command }) => {
       electron({
         main: {
           // Shortcut of `build.lib.entry`
-          entry: 'electron/main/index.ts',
+          entry: 'src/main/index.ts',
           onstart({ startup }) {
             if (process.env.VSCODE_DEBUG)
               console.log(/* For `.vscode/.debug.script.mjs` */'[startup] Electron App')
@@ -53,7 +53,7 @@ export default defineConfig(({ command }) => {
         preload: {
           // Shortcut of `build.rollupOptions.input`.
           // Preload scripts may contain Web assets, so use the `build.rollupOptions.input` instead `build.lib.entry`.
-          input: 'electron/preload/index.ts',
+          input: 'src/preload/index.ts',
           vite: {
             build: {
               sourcemap: sourcemap ? 'inline' : undefined, // #332
@@ -70,7 +70,7 @@ export default defineConfig(({ command }) => {
         // See 👉 https://github.com/electron-vite/vite-plugin-electron-renderer
         renderer: {},
       }),
-      AutoImport({ imports: ['vue'], dts: './src/auto-imports.d.ts' }),
+      AutoImport({ imports: ['vue'], dts: './src/renderer/auto-imports.d.ts' }),
       UnoCSS(),
     ],
     server: process.env.VSCODE_DEBUG && (() => {
@@ -87,8 +87,8 @@ export default defineConfig(({ command }) => {
     clearScreen: false,
     resolve: {
       alias: {
-        '@render': join(__dirname, 'src'),
-        '@main': join(__dirname, 'electron'),
+        '@render': join(__dirname, 'src/renderer'),
+        '@main': join(__dirname, 'src/main'),
       },
     },
     test: {

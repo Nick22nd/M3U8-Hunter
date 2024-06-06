@@ -1,7 +1,7 @@
 import path from 'node:path'
 import { expect, it } from 'vitest'
-import { M3u8Service } from '../electron/lib/m3u8.app'
-import { DialogService } from '../electron/service/dialog.service'
+import { M3u8Service } from '../src/main/lib/m3u8.app'
+import { DialogService } from '../src/main/service/dialog.service'
 
 let win: any
 const dialogService = new DialogService(win)
