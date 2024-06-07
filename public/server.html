@@ -1,0 +1,76 @@
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>M3U8 Hunter</title>
+    <style>
+        ul>li {
+            padding: 10px;
+        }
+
+        h2 {
+            width: 100%;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+    <H2>M3U8 Hunter</H2>
+    <div id="container" style="display: flex; flex-direction: column;"></div>
+    <table></table>
+</body>
+<script>
+    console.log('Hello World')
+    let dataPath = './db.json'
+    fetch(dataPath)
+        .then(response => response.json())
+        .then(data => {
+            console.log(data); // Outputs the content of db.json
+            // You can use the data here
+            //display the data in a table
+            const container = document.getElementById('container')
+            const ul = document.createElement('ul')
+
+            for (let item of data.tasks) {
+                let p = document.createElement('a')
+                p.textContent = `${item.title}-${item.progress}`
+                const fileName = new URL(item.url).pathname.split('/').pop()
+                p.href = './' + item.directory?.split('/').pop() + '/' + fileName
+                const li = document.createElement('li')
+                li.appendChild(p)
+                ul.appendChild(li)
+            }
+            container.appendChild(ul)
+
+            // insert table
+            // let table = document.querySelector('table')
+            // let thead = document.createElement('thead')
+            // let tbody = document.createElement('tbody')
+            // let tr = document.createElement('tr')
+            // for (let item in sample) {
+            //     let th = document.createElement('th')
+            //     th.textContent = item
+            //     tr.appendChild(th)
+            // }
+            // thead.appendChild(tr)
+            // table.appendChild(thead)
+            // tbody.appendChild(tr)
+            // tr = document.createElement('tr')
+            // for (let item in sample) {
+            //     let td = document.createElement('td')
+            //     td.textContent = sample[item]
+            //     tr.appendChild(td)
+            //     tbody.appendChild(tr)
+            // }
+            // table.appendChild(tbody)
+
+
+
+        })
+        .catch(error => console.error('Error:', error));
+
+</script>
+
+</html>

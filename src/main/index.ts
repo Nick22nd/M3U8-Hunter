@@ -64,10 +64,11 @@ function registerService() {
   try {
     if (!serverConfig.serverStarted)
       runServe()
-    const dialogService = new DialogService(win)
-    const m3u8Service = new M3u8Service(dialogService)
     const snifferService = new Sniffer(win)
     snifferService.m3u8Find()
+    
+    const dialogService = new DialogService(win)
+    const m3u8Service = new M3u8Service(dialogService)
     serviceHub = new ServiceContainer(dialogService, m3u8Service)
   }
   catch (error) {

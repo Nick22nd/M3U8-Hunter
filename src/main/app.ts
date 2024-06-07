@@ -1,4 +1,5 @@
 import type { M3u8Service } from './lib/m3u8.app'
+import { copyServerHtmlToAppData } from './lib/utils'
 import type { DialogService } from './service/dialog.service'
 
 export class ServiceContainer {
@@ -15,6 +16,7 @@ export class ServiceContainer {
   // }
 
   private init() {
+    copyServerHtmlToAppData()
     console.log('App init')
   }
 }

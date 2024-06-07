@@ -32,6 +32,14 @@ export function getAppDataDir() {
   }
 }
 
+export function copyServerHtmlToAppData() {
+  const appDir = getAppDataDir()
+  const serverHtml = join(process.env.DIST, 'server.html')
+  const targetHtml = join(appDir, 'index.html')
+  fsExtra.copyFileSync(serverHtml, targetHtml)
+  return targetHtml
+}
+
 export function timeFormat(streamDuration: number) {
   const hours = Math.floor(streamDuration / 3600)
   const minutes = Math.floor((streamDuration - hours * 3600) / 60)
