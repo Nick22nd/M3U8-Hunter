@@ -1,23 +1,20 @@
 export function debounce<T extends (...args: any[]) => any>(
   func: T,
-  wait: number,
+  wait = 1000,
   immediate = false,
 ): T {
-  let timeout: NodeJS.Timeout | null
+  let timeout: ReturnType<typeof setTimeout> | null
   return function (this: any, ...args: any[]) {
-    // eslint-disable-next-line ts/no-this-alias
-    const context = this
-    const later = function () {
+    const later = () => {
       timeout = null
       if (!immediate)
-        func.apply(context, args)
+        func.apply(this, args)
     }
     const callNow = immediate && !timeout
     if (timeout)
       clearTimeout(timeout)
-
     timeout = setTimeout(later, wait)
     if (callNow)
-      func.apply(context, args)
+      func.apply(this, args)
   } as T
 }

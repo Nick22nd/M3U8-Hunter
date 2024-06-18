@@ -4,6 +4,7 @@ import { onMounted, ref, watch } from 'vue'
 import DPlayer from 'dplayer'
 import Hls from 'hls.js'
 import { useStorage } from '@vueuse/core'
+import { onBeforeRouteLeave, useRoute } from 'vue-router'
 import { useTaskStore } from '../stores'
 
 interface PlayHistoryItem {
@@ -15,53 +16,14 @@ const playHistory = useStorage('play-history', [], localStorage) as Ref<PlayHist
 const taskStore = useTaskStore()
 const videoDom = ref(null)
 const dplayer = ref(null as DPlayer | null)
-watch(() => taskStore.playUrl, async (newUrl, oldUrl) => {
-  console.log('url', newUrl, oldUrl)
-  // record play history
-  let historyItem = playHistory.value.find(item => item.url === oldUrl)
-  if (historyItem) {
-    historyItem.time = dplayer.value?.video.currentTime || 0
-    // move to last position
-    playHistory.value = playHistory.value.filter(item => item.url !== oldUrl)
-    playHistory.value.push(historyItem)
-  }
-  else {
-    historyItem = {
-      url: newUrl,
-      time: dplayer.value?.video.currentTime || 0,
-      title: taskStore.playerTitle,
-    }
-    playHistory.value.push(historyItem)
-  }
-
-  if (dplayer.value) {
-    if (newUrl.startsWith('file://')) {
-      dplayer.value.switchVideo({
-        url: newUrl,
-        type: 'auto',
-        // @ts-expect-error dplayer type error
-      }, undefined)
-    }
-    dplayer.value.switchVideo({
-      url: newUrl,
-      type: 'customHls',
-      customType: {
-        customHls(video: HTMLMediaElement, _player: any) {
-          const hls = new Hls()
-          hls.loadSource(video.src)
-          hls.attachMedia(video)
-        },
-      },
-
-      // @ts-expect-error dplayer type error
-    }, undefined)
-    const lastViewTime = playHistory.value.find(item => item.url === newUrl)?.time || 0
-    setTimeout(() => {
-      // dplayer.value?.video.play()
-      dplayer.value && (dplayer.value.video.currentTime = lastViewTime)
-    }, 100)
-  }
-})
+const route = useRoute()
+const autoPlay = ref(false)
+watch(() => route.query.from, (from) => {
+  console.log('from', from)
+  console.log('route: ', route.query.from)
+  if (from === 'tasks')
+    autoPlay.value = true
+}, { immediate: true })
 onMounted(() => {
   console.log('mounted')
   // load the last play url
@@ -85,12 +47,46 @@ onMounted(() => {
     },
     // chromecast: true,
     // airplay: true,
-    autoplay: false,
+    autoplay: autoPlay.value,
   })
   dplayer.value = dp
+  const lastViewTime = playHistory.value.find(item => item.url === taskStore.playUrl)?.time || 0
+  console.log('lastViewTime', lastViewTime)
+  setTimeout(() => {
+    // dplayer.value?.video.play()
+    dplayer.value && (dplayer.value.video.currentTime = lastViewTime)
+  }, 100)
   // console.log('dp', dp.plugins.hls)
   // dp.play()
 })
+onBeforeRouteLeave((to, from, next) => {
+  console.log('to', to)
+  console.log('from', from)
+  if (dplayer.value) {
+    updatePlayHistory(taskStore.playUrl)
+    dplayer.value.destroy()
+  }
+  next()
+})
+
+function updatePlayHistory(newUrl: string) {
+  let historyItem = playHistory.value.find(item => item.url === newUrl)
+  if (historyItem) {
+    historyItem.time = dplayer.value?.video.currentTime || 0
+    // move to last position
+    playHistory.value = playHistory.value.filter(item => item.url !== newUrl)
+    playHistory.value.push(historyItem)
+  }
+  else {
+    historyItem = {
+      url: newUrl,
+      time: dplayer.value?.video.currentTime || 0,
+      title: taskStore.playerTitle,
+    }
+    playHistory.value.push(historyItem)
+  }
+}
+
 function onReady() {
   console.log('QR onReady')
 }

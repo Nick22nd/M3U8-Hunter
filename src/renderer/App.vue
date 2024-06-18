@@ -13,36 +13,9 @@ import type { MediaMessage, Message4Renderer, TaskItem } from './common.types'
 import { MessageName, TabList } from './common.types'
 import { useFindedMediaStore, useTaskStore } from './stores/'
 import Setting from './pages/Setting.vue'
+import SideBar from './components/SideBar.vue'
 
-const tabs = [
-  {
-    label: 'Tasks',
-    component: Tasks,
-    icon: ListChecks,
-  },
-  {
-    label: 'Player',
-    component: Home,
-    icon: Film,
-  },
-  {
-    label: 'Explore',
-    component: WebviewVue,
-    icon: Globe,
-  },
-  {
-    label: 'Setting',
-    component: Setting,
-    icon: Settings,
-  },
-  {
-    label: 'About',
-    component: About,
-    icon: Info,
-  },
-]
 const taskStore = useTaskStore()
-const tabPosition = 'left'
 const centerDialogVisible = ref(false)
 interface PlayList {
   attributes: {
@@ -124,11 +97,11 @@ onMounted(() => {
     }
   })
 })
-function changeTabs(name: TabPaneName) {
-  console.log('changeTabs', name)
-  if (name === TabList.Tasks)
-    sendMsgToMainProcess({ name: MessageName.getTasks })
-}
+// function changeTabs(name: TabPaneName) {
+//   console.log('changeTabs', name)
+//   if (name === TabList.Tasks)
+//     sendMsgToMainProcess({ name: MessageName.getTasks })
+// }
 async function dowloadTS() {
   centerDialogVisible.value = false
   if (waitingTask.value) {
@@ -164,22 +137,15 @@ async function dowloadTS() {
 
 <template>
   <el-container class="h-screen">
-    <el-tabs
-      v-model:model-value="taskStore.activeTab" type="border-card" :tab-position="tabPosition"
-      class="w-full demo-tabs" @tab-change="changeTabs"
-    >
-      <el-tab-pane v-for="tab of tabs" :key="tab.label" :label="tab.label" :name="tab.label">
-        <template #label>
-          <div class="flex justify-between items-center w-20">
-            <el-icon class="mr-3">
-              <component :is="tab.icon" />
-            </el-icon>
-            <span class="flex-1 text-left">{{ tab.label }}</span>
-          </div>
-        </template>
-        <component :is="tab.component" />
-      </el-tab-pane>
-    </el-tabs>
+    <SideBar />
+    <el-main class="p-0">
+      <router-view v-slot="{ Component }">
+        <keep-alive :include="['Webview', 'Tasks']">
+          <component :is="Component" />
+        </keep-alive>
+      </router-view>
+    </el-main>
+
     <el-dialog v-model="centerDialogVisible" title="Warning" width="500" center>
       <span>Task Name: {{ waitingTask?.name }}</span>
       <el-select v-model="selectedUrl" placeholder="Please select a zone">
@@ -228,17 +194,14 @@ body.dark {
   background-color: var(--background-dark-color);
 }
 
-.logo {
-  width: 400px;
-  border-radius: 1rem;
-  box-shadow: 0 0 #0000, 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-}
-
 .container {
   display: flex;
   /* flex-direction: column; */
   align-items: center;
   justify-content: center;
+}
+.el-main {
+  padding: 1px;
 }
 
 .demo-tabs>.el-tabs__content {

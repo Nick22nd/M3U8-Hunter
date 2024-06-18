@@ -1,17 +1,42 @@
 <script setup lang="ts">
 import { ref, toRaw } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage, ElMessageBox, ElTable } from 'element-plus'
 import { Check, FolderClosed, Link, Pause, Play, RefreshCw, Trash, Youtube } from 'lucide-vue-next'
+import { useRoute, useRouter } from 'vue-router'
 import type { Message4Renderer, TaskItem } from '../common.types'
 import { MessageName, TabList } from '../common.types'
 import { useTaskStore } from '../stores'
+import { debounce } from '../util/util'
 
+const router = useRouter()
+// const route = useRoute()
 const { sendMsg: sendMsgToMainProcess } = window.electron
-
 const taskStore = useTaskStore()
 const multipleSelection = ref<TaskItem[]>([])
 const search = ref('')
-
+const tableRef = ref<null | InstanceType<typeof ElTable>>(null)
+const scrollTop = ref(0)
+onMounted(() => {
+  if (tableRef.value) {
+    // console.log('table', tableRef.value)
+    // console.log(tableRef.value.scrollBarRef.wrapRef)
+    const scrollElement = tableRef.value.scrollBarRef.wrapRef as HTMLElement
+    scrollElement.onscroll = debounce((event: Event) => {
+      const target = event.target as HTMLElement
+      console.log(target.scrollTop)
+      scrollTop.value = target.scrollTop || 0
+    })
+  }
+  // table.value.
+})
+onActivated(() => {
+  console.log('activated')
+  if (tableRef.value) {
+    // console.log('table', tableRef.value)
+    // console.log(tableRef.value.scrollBarRef.wrapRef)
+    tableRef.value.setScrollTop(scrollTop.value)
+  }
+})
 const filterTableData = computed(() =>
   taskStore.tasks.filter(
     (data) => {
@@ -88,6 +113,7 @@ function playTask(task: TaskItem) {
   taskStore.playUrl = `${taskStore.urlPrefix + task.directory?.split('/').pop()}/${fileName}`
   taskStore.playerTitle = task.title || 'player'
   taskStore.switchTab(TabList.Home)
+  router.push({ path: '/home', query: { from: 'tasks' } })
 }
 
 function openLink(task: TaskItem) {
@@ -97,6 +123,7 @@ function openLink(task: TaskItem) {
     navigator.clipboard.writeText(task.from)
     taskStore.task2webviewUrl = task.from
     taskStore.switchTab(TabList.Explore)
+    router.push({ path: '/webview', query: { from: 'tasks' } })
   }
 }
 function restart(task: TaskItem) {
@@ -161,8 +188,8 @@ function resumeTask(task: TaskItem) {
 
 <template>
   <div class="h-full">
-    <el-table :data="filterTableData" style="" max-height="95vh" @selection-change="handleSelectionChange">
-      <el-table-column type="selection" width="55" />
+    <ElTable ref="tableRef" :data="filterTableData" max-height="95vh" @selection-change="handleSelectionChange">
+      <!-- <el-table-column type="selection" width="50" /> -->
       <el-table-column label="Progress" width="100">
         <template #default="scope">
           <div class="flex flex-col justify-center">
@@ -241,7 +268,7 @@ function resumeTask(task: TaskItem) {
           </div>
         </template>
       </el-table-column>
-    </el-table>
+    </ElTable>
     <div style="margin-top: 20px">
       <!-- <el-button @click="toggleSelection([tableData[1], tableData[2]])">Toggle selection status of second and third
                 rows</el-button>
@@ -250,4 +277,6 @@ function resumeTask(task: TaskItem) {
   </div>
 </template>
 
-<style scoped></style>
+<style scoped>
+
+</style>

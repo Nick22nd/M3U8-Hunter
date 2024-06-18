@@ -28,6 +28,9 @@ function openAppDir() {
   }
   sendMsgToMainProcess(newMessage)
 }
+onMounted(() => {
+
+})
 const buttonGroup = [
   {
     text: 'open log dir',
@@ -45,12 +48,17 @@ const buttonGroup = [
 </script>
 
 <template>
-  <div class="flex justify-center flex-col">
-    <div v-for="(item) of buttonGroup" :key="item.text">
+  <div class="flex justify-center flex-col gap-1">
+    <div
+      v-for="(item) of buttonGroup" :key="item.text"
+      class="flex justify-between"
+    >
+      <el-text>{{ item.text }}</el-text>
       <el-button class="font-mono" @click="item.func">
         {{ item.text }}
       </el-button>
     </div>
+    <el-divider />
   </div>
 </template>
 

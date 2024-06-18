@@ -84,6 +84,20 @@ onMounted(() => {
         font-family: "system";
       }
     `)
+    webview.value?.executeJavaScript(`
+    Array.from(document.querySelectorAll('meta')).map(meta => ({
+      name: meta.getAttribute('name'),
+      property: meta.getAttribute('property'),
+      content: meta.getAttribute('content')
+    }))
+`).then((metaData) => {
+      console.log('Meta data:', metaData)
+    }).catch((error) => {
+      console.error('Error getting meta data:', error)
+    })
+
+    // const content = urlMetadata(null, { parseResponseObject: })
+    console.log('dom-ready', webview.value?.getTitle())
   })
   webview.value?.addEventListener('new-window', (e: any) => {
     console.log('new-window', e)
@@ -127,6 +141,9 @@ onMounted(() => {
   webview.value?.addEventListener('did-start-loading', () => {
     domReady.value = false
   })
+})
+onActivated(() => {
+  console.log('activated webview')
 })
 function urlChange(val: string | number) {
   console.log('urlChange', val)

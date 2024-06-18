@@ -6,10 +6,12 @@ import TasksVue from '../pages/Tasks.vue'
 
 // We'll talk about nested routes later.
 const routes = [
-  { path: '/', component: HomeVue },
-  { path: '/about', component: About },
-  { path: '/webview', component: WebviewVue },
-  { path: '/tasks', component: TasksVue },
+  { path: '/', component: HomeVue, name: 'Player' },
+  { path: '/webview', component: WebviewVue, name: 'Explore' },
+  { path: '/about', component: About, name: 'About' },
+  { path: '/tasks', component: TasksVue, name: 'Tasks' },
+  { path: '/setting', component: () => import('../pages/Setting.vue'), name: 'Setting' },
+  { path: '/:pathMatch(.*)*', redirect: '/' },
 ]
 
 // 3. Create the router instance and pass the `routes` option
@@ -19,4 +21,10 @@ export const router = createRouter({
   // 4. Provide the history implementation to use. We are using the hash history for simplicity here.
   history: createWebHashHistory(),
   routes, // short for `routes: routes`
+  scrollBehavior(to, from, savedPosition) {
+    // if (savedPosition)
+    //   return savedPosition
+    // else
+    //   return { top: 0 }
+  },
 })
