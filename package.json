@@ -29,6 +29,9 @@
     "lint:fix": "eslint . --fix"
   },
   "dependencies": {
+    "@types/sortablejs": "^1.15.8",
+    "electron-tabs": "^1.0.4",
+    "sortablejs": "^1.15.2"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^2.18.0",

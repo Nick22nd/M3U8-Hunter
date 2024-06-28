@@ -30,6 +30,11 @@ const myRoutes = [
     name: 'About',
     icon: Info,
   },
+  {
+    path: '/tab',
+    name: 'Tab',
+    icon: Info,
+  },
 ]
 
 const route = useRoute()

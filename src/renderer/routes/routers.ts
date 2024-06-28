@@ -3,6 +3,7 @@ import HomeVue from '../pages/Home.vue'
 import WebviewVue from '../pages/Webview.vue'
 import About from '../pages/About.vue'
 import TasksVue from '../pages/Tasks.vue'
+import TabView from '../pages/TabView.vue'
 
 // We'll talk about nested routes later.
 const routes = [
@@ -12,6 +13,7 @@ const routes = [
   { path: '/tasks', component: TasksVue, name: 'Tasks' },
   { path: '/setting', component: () => import('../pages/Setting.vue'), name: 'Setting' },
   { path: '/:pathMatch(.*)*', redirect: '/' },
+  { path: '/tab', component: TabView },
 ]
 
 // 3. Create the router instance and pass the `routes` option

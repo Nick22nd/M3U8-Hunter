@@ -4,6 +4,17 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+dependencies:
+  '@types/sortablejs':
+    specifier: ^1.15.8
+    version: 1.15.8
+  electron-tabs:
+    specifier: ^1.0.4
+    version: 1.0.4
+  sortablejs:
+    specifier: ^1.15.2
+    version: 1.15.2
+
 devDependencies:
   '@antfu/eslint-config':
     specifier: ^2.18.0
@@ -1461,6 +1472,10 @@ packages:
   /@types/semver@7.5.8:
     resolution: {integrity: sha512-I8EUhyrgfLrcTkzV3TSsGyl1tSuPrEDzr0yd5m90UgNxQkyDXULk3b6MlQqTCpZpNtWe1K0hzclnZkTcLBe2UQ==}
     dev: true
+
+  /@types/sortablejs@1.15.8:
+    resolution: {integrity: sha512-b79830lW+RZfwaztgs1aVPgbasJ8e7AXtZYHTELNXZPsERt4ymJdjV4OccDbHQAvHrCcFpbF78jkm0R6h/pZVg==}
+    dev: false
 
   /@types/unist@2.0.10:
     resolution: {integrity: sha512-IfYcSBWE3hLpBg8+X2SEa8LVkJdJEkT2Ese2aaLs3ptGdVtABxndrMaxuFlQ1qdFf9Q5rDvDpxI3WwgvKFAsQA==}
@@ -3477,6 +3492,10 @@ packages:
       conf: 10.2.0
       type-fest: 2.19.0
     dev: true
+
+  /electron-tabs@1.0.4:
+    resolution: {integrity: sha512-f3hUfMufW8kEZiXf2UndYsmoTdye0rcTL4TjF5bhLTTG8ROmla5Q68ZHSaVmK37BeBQilOfJ70NvqiBd7ahsBQ==}
+    dev: false
 
   /electron-to-chromium@1.4.630:
     resolution: {integrity: sha512-osHqhtjojpCsACVnuD11xO5g9xaCyw7Qqn/C2KParkMv42i8jrJJgx3g7mkHfpxwhy9MnOJr8+pKOdZ7qzgizg==}
@@ -6878,6 +6897,10 @@ packages:
     dependencies:
       is-plain-obj: 1.1.0
     dev: true
+
+  /sortablejs@1.15.2:
+    resolution: {integrity: sha512-FJF5jgdfvoKn1MAKSdGs33bIqLi3LmsgVTliuX6iITj834F+JRQZN90Z93yql8h0K2t0RwDPBmxwlbZfDcxNZA==}
+    dev: false
 
   /source-map-js@1.0.2:
     resolution: {integrity: sha512-R0XvVJ9WusLiqTCEiGCmICCMplcCkIwwR11mOSD9CR5u+IXYdiseeEuXCVAjS54zqwkLcPNnmU4OeJ6tUrWhDw==}
