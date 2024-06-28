@@ -21,10 +21,10 @@ export const router = createRouter({
   // 4. Provide the history implementation to use. We are using the hash history for simplicity here.
   history: createWebHashHistory(),
   routes, // short for `routes: routes`
-  scrollBehavior(to, from, savedPosition) {
-    // if (savedPosition)
-    //   return savedPosition
-    // else
-    //   return { top: 0 }
-  },
+  // scrollBehavior(to, from, savedPosition) {
+  // if (savedPosition)
+  //   return savedPosition
+  // else
+  //   return { top: 0 }
+  // },
 })

@@ -84,18 +84,7 @@ function deleteItem(task: TaskItem) {
       // catch error
     })
 }
-function _startTask(task: TaskItem) {
-  console.log('handleClick', toRaw(task))
-  const newTask = {
-    ...toRaw(task),
-  }
-  const newMessage: Message4Renderer = {
-    name: MessageName.startTask,
-    data: newTask,
-    type: 'download',
-  }
-  sendMsgToMainProcess(newMessage)
-}
+
 function openDir(task: TaskItem) {
   console.log('handleClick', toRaw(task))
 

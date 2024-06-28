@@ -1,5 +1,6 @@
 import fs from 'node:fs'
 import { join } from 'node:path'
+import EventEmitter from 'node:events'
 import { Parser } from 'm3u8-parser'
 import download from 'download'
 import fsExtra from 'fs-extra'
@@ -7,25 +8,26 @@ import Logger from 'electron-log'
 import type { DialogService } from '../service/dialog.service'
 import type { TaskItem } from '../common.types'
 import { getAppDataDir, timeFormat } from './utils'
-
 import { jsondb } from './jsondb'
 import { TaskManager } from './promiseLimit'
 
-export class M3u8Service {
+export class M3u8Service extends EventEmitter {
   // static storagePath = getAppDataDir()
   static httpTimeout = {
     socket: 30000,
     request: 30000,
     response: 60000,
   }
-
+  events: ['showPlaylistTaskDialog', 'updateProgress', 'showNotification']
   storagePath: any
   dialogService: DialogService
   m3u8Tasks: Map<string, TaskManager> = new Map()
   constructor(dialogService: DialogService) {
+    super()
     this.dialogService = dialogService
     this.storagePath = getAppDataDir()
     console.log('storagePath', this.storagePath)
+    
   }
 
   public getTime(): number {

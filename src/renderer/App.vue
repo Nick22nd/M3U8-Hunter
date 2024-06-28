@@ -1,18 +1,11 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import type { TabPaneName } from 'element-plus'
 import { ElNotification } from 'element-plus'
-import { Film, Globe, Info, ListChecks, Settings } from 'lucide-vue-next'
 import { useDark, useToggle } from '@vueuse/core'
 import { Moon, Sunny } from '@element-plus/icons-vue'
-import About from './pages/About.vue'
-import Home from './pages/Home.vue'
-import Tasks from './pages/Tasks.vue'
-import WebviewVue from './pages/Webview.vue'
 import type { MediaMessage, Message4Renderer, TaskItem } from './common.types'
-import { MessageName, TabList } from './common.types'
+import { MessageName } from './common.types'
 import { useFindedMediaStore, useTaskStore } from './stores/'
-import Setting from './pages/Setting.vue'
 import SideBar from './components/SideBar.vue'
 
 const taskStore = useTaskStore()
@@ -97,11 +90,6 @@ onMounted(() => {
     }
   })
 })
-// function changeTabs(name: TabPaneName) {
-//   console.log('changeTabs', name)
-//   if (name === TabList.Tasks)
-//     sendMsgToMainProcess({ name: MessageName.getTasks })
-// }
 async function dowloadTS() {
   centerDialogVisible.value = false
   if (waitingTask.value) {
