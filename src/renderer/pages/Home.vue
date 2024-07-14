@@ -30,6 +30,10 @@ onMounted(() => {
   if (!taskStore.playUrl) {
     taskStore.playUrl = playHistory.value.at(-1)?.url || ''
     taskStore.playerTitle = playHistory.value.at(-1)?.title || 'player'
+    const fixedUrl = new URL(taskStore.playUrl)
+    fixedUrl.hostname = taskStore.serverConfig.ip
+    fixedUrl.port = String(taskStore.serverConfig.port)
+    taskStore.playUrl = fixedUrl.toString()
   }
   const dp = new DPlayer({
     container: videoDom.value,

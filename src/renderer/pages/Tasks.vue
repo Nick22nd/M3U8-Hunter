@@ -229,28 +229,28 @@ function resumeTask(task: TaskItem) {
               </el-button>
               <el-button
                 v-else-if="scope.row.status === 'downloading'" link type="primary" size="small"
-                @click="pauseTask(scope.row)"
+                title="pause" @click="pauseTask(scope.row)"
               >
                 <Pause title="pause" />
               </el-button>
               <el-button v-else-if="scope.row.status === 'downloaded'" link type="primary" size="small">
                 <Check title="ok" />
               </el-button>
-              <el-button link type="primary" size="small" @click="deleteItem(scope.row)">
+              <el-button link type="primary" size="small" title="delete" @click="deleteItem(scope.row)">
                 <Trash title="delete" />
               </el-button>
-              <el-button link type="primary" size="small" @click="openDir(scope.row)">
+              <el-button link type="primary" size="small" title="open fold" @click="openDir(scope.row)">
                 <FolderClosed title="open dir" />
               </el-button>
             </div>
             <div>
-              <el-button link type="primary" size="small" @click="playTask(scope.row)">
+              <el-button link type="primary" size="small" title="play" @click="playTask(scope.row)">
                 <Youtube title="play" />
               </el-button>
-              <el-button link type="primary" size="small" @click="openLink(scope.row)">
+              <el-button link type="primary" size="small" title="link" @click="openLink(scope.row)">
                 <Link title="link" />
               </el-button>
-              <el-button link type="primary" size="small" @click="restart(scope.row)">
+              <el-button link type="primary" size="small" title="restart" @click="restart(scope.row)">
                 <RefreshCw title="restart" />
               </el-button>
             </div>
