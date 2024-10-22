@@ -25,15 +25,21 @@ watch(() => route.query.from, (from) => {
     autoPlay.value = true
 }, { immediate: true })
 onMounted(() => {
-  console.log('mounted')
+  console.log('mounted', playHistory.value, taskStore)
   // load the last play url
-  if (!taskStore.playUrl) {
+  if (!taskStore.playUrl && playHistory.value.length !== 0) {
+    console.log('task: ', JSON.stringify(taskStore.playUrl))
     taskStore.playUrl = playHistory.value.at(-1)?.url || ''
     taskStore.playerTitle = playHistory.value.at(-1)?.title || 'player'
-    const fixedUrl = new URL(taskStore.playUrl)
-    fixedUrl.hostname = taskStore.serverConfig.ip
-    fixedUrl.port = String(taskStore.serverConfig.port)
-    taskStore.playUrl = fixedUrl.toString()
+    try {
+      const fixedUrl = new URL(taskStore.playUrl)
+      fixedUrl.hostname = taskStore.serverConfig.ip
+      fixedUrl.port = String(taskStore.serverConfig.port)
+      taskStore.playUrl = fixedUrl.toString()
+    }
+    catch (err) {
+      console.error(err)
+    }
   }
   const dp = new DPlayer({
     container: videoDom.value,

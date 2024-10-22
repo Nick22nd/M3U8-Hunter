@@ -1,5 +1,6 @@
 import os from 'node:os'
 import path, { join } from 'node:path'
+import fs from 'node:fs'
 import fsExtra from 'fs-extra'
 import Store from 'electron-store'
 
@@ -36,8 +37,10 @@ export function copyServerHtmlToAppData() {
   const appDir = getAppDataDir()
   const serverHtml = join(process.env.DIST, 'server.html')
   const targetHtml = join(appDir, 'index.html')
-  fsExtra.copyFileSync(serverHtml, targetHtml)
-  return targetHtml
+  if (process.env.DIST && fs.existsSync(process.env.DIST))
+  // fsExtra.copyFileSync(serverHtml, targetHtml)
+
+    return targetHtml
 }
 
 export function timeFormat(streamDuration: number) {

@@ -97,9 +97,10 @@ function openDir(task: TaskItem) {
 }
 function playTask(task: TaskItem) {
   console.log('handleClick', toRaw(task))
-
+  const splitSymbol = navigator.userAgentData.platform === 'Windows' ? '\\' : '/'
   const fileName = new URL(task.url).pathname.split('/').pop()
-  taskStore.playUrl = `${taskStore.urlPrefix + task.directory?.split('/').pop()}/${fileName}`
+  console.log('fileName', fileName)
+  taskStore.playUrl = `${taskStore.urlPrefix + task.directory?.split(splitSymbol).pop()}/${fileName}`
   taskStore.playerTitle = task.title || 'player'
   taskStore.switchTab(TabList.Home)
   router.push({ path: '/home', query: { from: 'tasks' } })
