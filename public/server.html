@@ -37,7 +37,8 @@
                 let p = document.createElement('a')
                 p.textContent = `${item.title}-${item.progress}`
                 const fileName = new URL(item.url).pathname.split('/').pop()
-                p.href = './' + item.directory?.split('/').pop() + '/' + fileName
+                const splitMark = item?.directory.includes(':\\') ? '\\' : '/';
+                p.href = './' + item.directory?.split(splitMark).pop() + '/' + fileName
                 const li = document.createElement('li')
                 li.appendChild(p)
                 ul.appendChild(li)
