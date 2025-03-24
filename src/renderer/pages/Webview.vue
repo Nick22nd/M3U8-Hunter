@@ -156,7 +156,7 @@ async function download(row: MediaMessage) {
     const rowRaw = toRaw(row)
     console.log('download', url, row)
 
-    ElMessageBox.prompt('Please input your task name', 'Tip', {
+    ElMessageBox.prompt(`Please input your task name${webview.value?.getURL()}`, 'Tip', {
       confirmButtonText: 'OK',
       cancelButtonText: 'Cancel',
       // inputPattern:

@@ -97,7 +97,9 @@ function openDir(task: TaskItem) {
 }
 function playTask(task: TaskItem) {
   console.log('handleClick', toRaw(task))
-  const splitSymbol = navigator.userAgentData.platform === 'Windows' ? '\\' : '/'
+  // eslint-disable-next-line ts/ban-ts-comment
+  // @ts-expect-error
+  const splitSymbol = window.navigator?.userAgentData.platform === 'Windows' ? '\\' : '/'
   const fileName = new URL(task.url).pathname.split('/').pop()
   console.log('fileName', fileName)
   taskStore.playUrl = `${taskStore.urlPrefix + task.directory?.split(splitSymbol).pop()}/${fileName}`
