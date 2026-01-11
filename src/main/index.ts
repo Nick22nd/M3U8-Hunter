@@ -12,6 +12,7 @@ import { getDefaultLogDir } from './lib/utils'
 import { DialogService } from './service/dialog.service'
 import { Sniffer } from './service/sniffer.service'
 import { ServiceContainer } from './app'
+import { initAria2Service } from './service/aria2.service'
 // The built directory structure
 //
 // ├─┬ dist-electron
@@ -189,6 +190,59 @@ const handlers = {
   [MessageName.openUrl]: async (data: string) => {
     console.log('openUrl', data)
     shell.openExternal(data)
+  },
+  [MessageName.getAria2Config]: async () => {
+    const aria2Service = initAria2Service()
+    const config = aria2Service.getConfigValue()
+    const newMessage: Message4Renderer = {
+      type: 'aria2',
+      name: MessageName.getAria2Config,
+      data: config,
+    }
+    win?.webContents.send('reply-msg', newMessage)
+  },
+  [MessageName.setAria2Config]: async (data: any) => {
+    const aria2Service = initAria2Service()
+    aria2Service.updateConfig(data)
+  },
+  [MessageName.startAria2]: async () => {
+    const aria2Service = initAria2Service()
+    const started = await aria2Service.start()
+    const newMessage: Message4Renderer = {
+      type: 'aria2',
+      name: MessageName.startAria2,
+      data: { started, running: aria2Service.isRunning() },
+    }
+    win?.webContents.send('reply-msg', newMessage)
+  },
+  [MessageName.stopAria2]: async () => {
+    const aria2Service = initAria2Service()
+    await aria2Service.stop()
+    const newMessage: Message4Renderer = {
+      type: 'aria2',
+      name: MessageName.stopAria2,
+      data: { running: false },
+    }
+    win?.webContents.send('reply-msg', newMessage)
+  },
+  [MessageName.getAria2Status]: async () => {
+    const aria2Service = initAria2Service()
+    const running = aria2Service.isRunning()
+    let status = null
+    if (running) {
+      try {
+        status = await aria2Service.getGlobalStatus()
+      }
+      catch (error) {
+        console.error('Failed to get aria2 status:', error)
+      }
+    }
+    const newMessage: Message4Renderer = {
+      type: 'aria2',
+      name: MessageName.getAria2Status,
+      data: { running, status },
+    }
+    win?.webContents.send('reply-msg', newMessage)
   },
   [MessageName.setAppDataDir]: () => {
     console.log('dialog')

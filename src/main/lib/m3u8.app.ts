@@ -2,7 +2,6 @@ import fs from 'node:fs'
 import { join } from 'node:path'
 import EventEmitter from 'node:events'
 import { Parser } from 'm3u8-parser'
-import download from 'download'
 import fsExtra from 'fs-extra'
 import Logger from 'electron-log'
 import type { DialogService } from '../service/dialog.service'
@@ -10,6 +9,7 @@ import type { TaskItem } from '../common.types'
 import { getAppDataDir, timeFormat } from './utils'
 import { jsondb } from './jsondb'
 import { TaskManager } from './promiseLimit'
+import { aria2Service } from '../service/aria2.service'
 
 export class M3u8Service extends EventEmitter {
   // static storagePath = getAppDataDir()
@@ -22,12 +22,13 @@ export class M3u8Service extends EventEmitter {
   storagePath: any
   dialogService: DialogService
   m3u8Tasks: Map<string, TaskManager> = new Map()
+  aria2Gids: Map<string, string[]> = new Map() // Track aria2 GIDs for each task
+
   constructor(dialogService: DialogService) {
     super()
     this.dialogService = dialogService
     this.storagePath = getAppDataDir()
     console.log('storagePath', this.storagePath)
-    
   }
 
   public getTime(): number {
@@ -39,6 +40,206 @@ export class M3u8Service extends EventEmitter {
     const data = await jsondb.getDB() as TaskItem[]
     // console.log('data', data)
     return data
+  }
+
+  /**
+   * Download a file using aria2 or fallback to fetch
+   */
+  private async downloadFile(url: string, targetPath: string, filename: string, headers: { [key: string]: string } = {}): Promise<void> {
+    // Try to use aria2 if available
+    if (aria2Service?.isRunning()) {
+      try {
+        const gid = await aria2Service.addDownload({
+          url,
+          dir: targetPath,
+          out: filename,
+          headers,
+        })
+
+        // Wait for download to complete
+        return await this.waitForAria2Download(gid)
+      }
+      catch (error) {
+        Logger.error('[M3u8Service] aria2 download failed, falling back to fetch:', error)
+      }
+    }
+
+    // Fallback to fetch API
+    const response = await fetch(url, {
+      headers: headers as HeadersInit,
+    })
+
+    if (!response.ok)
+      throw new Error(`HTTP error! status: ${response.status}`)
+
+    const buffer = await response.arrayBuffer()
+    const filePath = join(targetPath, filename)
+    fs.writeFileSync(filePath, Buffer.from(buffer))
+  }
+
+  /**
+   * Wait for aria2 download to complete
+   */
+  private async waitForAria2Download(gid: string, timeout = 300000): Promise<void> {
+    const startTime = Date.now()
+
+    while (Date.now() - startTime < timeout) {
+      if (!aria2Service?.isRunning())
+        throw new Error('aria2 is not running')
+
+      try {
+        const status = await aria2Service.tellStatus(gid)
+
+        if (status.status === 'complete')
+          return
+
+        if (status.status === 'error')
+          throw new Error(`Download failed: ${status.errorMessage}`)
+
+        if (status.status === 'removed')
+          throw new Error('Download was removed')
+
+        // Wait 1 second before checking again
+        await new Promise(resolve => setTimeout(resolve, 1000))
+      }
+      catch (error) {
+        if (error instanceof Error)
+          throw error
+        throw new Error('Failed to check download status')
+      }
+    }
+
+    throw new Error('Download timeout')
+  }
+
+  /**
+   * Download TS segments using aria2
+   */
+  private async downloadSegmentsWithAria2(task: TaskItem, segments: any[], baseURL: string, tsDir: string): Promise<void> {
+    if (!aria2Service?.isRunning())
+      throw new Error('aria2 is not running')
+
+    const segmentCount = segments.length
+    let downloadedCount = 0
+
+    // Check existing segments
+    const existedSegments = fs.readdirSync(tsDir)
+    for (const segment of segments) {
+      const segmentUrl = segment.uri.startsWith('http') ? segment.uri : `${baseURL}${segment.uri}`
+      const segmentFile = new URL(segmentUrl).pathname.split('/').pop()
+      if (existedSegments.includes(segmentFile))
+        downloadedCount++
+    }
+
+    // Prepare download URLs
+    const urlsToDownload: string[] = []
+    for (const segment of segments) {
+      const segmentUrl = segment.uri.startsWith('http') ? segment.uri : `${baseURL}${segment.uri}`
+      const segmentFile = new URL(segmentUrl).pathname.split('/').pop()
+      const segmentPath = join(tsDir, segmentFile)
+
+      if (!fs.existsSync(segmentPath))
+        urlsToDownload.push(segmentUrl)
+    }
+
+    if (urlsToDownload.length === 0) {
+      // All segments already downloaded
+      await jsondb.update({
+        ...task,
+        segmentCount,
+        downloadedCount: segmentCount,
+        progress: `${segmentCount}/${segmentCount}`,
+        status: 'downloaded',
+      })
+      const newTaskArray = await jsondb.getDB()
+      this.dialogService.updateProgress(newTaskArray)
+      return
+    }
+
+    // Add all segments to aria2 as batch downloads
+    const gids: string[] = []
+    const batchSize = 50 // aria2 can handle multiple URIs in one call
+
+    for (let i = 0; i < urlsToDownload.length; i += batchSize) {
+      const batch = urlsToDownload.slice(i, i + batchSize)
+      const batchGids = await aria2Service.addDownloads(batch, {
+        dir: tsDir,
+        headers: task.headers,
+      })
+      gids.push(...batchGids)
+    }
+
+    // Store GIDs for this task (for pause/resume)
+    this.aria2Gids.set(task.url, gids)
+
+    // Monitor downloads
+    await this.monitorAria2Downloads(task, gids, segmentCount, downloadedCount)
+  }
+
+  /**
+   * Monitor aria2 downloads and update progress
+   */
+  private async monitorAria2Downloads(task: TaskItem, gids: string[], segmentCount: number, initialDownloaded: number): Promise<void> {
+    let completedCount = initialDownloaded
+    let lastUpdateTime = Date.now()
+
+    while (true) {
+      // Check status of all downloads
+      const statuses = await Promise.allSettled(
+        gids.map(gid => aria2Service!.tellStatus(gid))
+      )
+
+      let allComplete = true
+      let hasError = false
+
+      for (const result of statuses) {
+        if (result.status === 'fulfilled') {
+          const status = result.value
+          if (status.status === 'active' || status.status === 'waiting')
+            allComplete = false
+          else if (status.status === 'error')
+            hasError = true
+          else if (status.status === 'complete')
+            completedCount++
+        }
+        else {
+          allComplete = false
+        }
+      }
+
+      // Update progress periodically (every 2 seconds)
+      if (Date.now() - lastUpdateTime > 2000) {
+        await jsondb.update({
+          ...task,
+          segmentCount,
+          downloadedCount: completedCount,
+          progress: `${completedCount}/${segmentCount}`,
+          status: allComplete ? 'downloaded' : 'downloading',
+        })
+        const newTaskArray = await jsondb.getDB()
+        this.dialogService.updateProgress(newTaskArray)
+        lastUpdateTime = Date.now()
+      }
+
+      if (allComplete)
+        break
+
+      if (hasError) {
+        await jsondb.update({
+          ...task,
+          segmentCount,
+          downloadedCount: completedCount,
+          progress: `${completedCount}/${segmentCount}`,
+          status: 'failed',
+        })
+        const newTaskArray = await jsondb.getDB()
+        this.dialogService.updateProgress(newTaskArray)
+        break
+      }
+
+      // Wait before checking again
+      await new Promise(resolve => setTimeout(resolve, 1000))
+    }
   }
 
   // download m3u8
@@ -84,22 +285,16 @@ export class M3u8Service extends EventEmitter {
         }
       }
       else {
-        console.log('start download')
+        console.log('start download m3u8')
         try {
-          await download(m3u8Url, targetPath, {
-            // filename: name,
-            timeout: M3u8Service.httpTimeout,
-            headers,
-            retry: {
-              retries: 3,
-            },
-          })
+          // Use aria2 or fetch to download M3U8 file
+          await this.downloadFile(m3u8Url, targetPath, sampleFilename, headers)
         }
         catch (error) {
           Logger.error('download m3u8 error', error)
           return
         }
-        console.log('download finished')
+        console.log('download m3u8 finished')
 
         const result = await this.analyzeM3u8File(targetPath, sampleFilename)
         // segments or playlists
@@ -143,6 +338,22 @@ export class M3u8Service extends EventEmitter {
     try {
       const data = await jsondb.getDB()
       const tasks = data.tasks as TaskItem[]
+      const task = tasks[num]
+
+      // Remove aria2 downloads if running
+      const gids = this.aria2Gids.get(task.url)
+      if (gids && aria2Service?.isRunning()) {
+        for (const gid of gids) {
+          try {
+            await aria2Service.remove(gid)
+          }
+          catch (error) {
+            Logger.error('[M3u8Service] Failed to remove aria2 download:', error)
+          }
+        }
+        this.aria2Gids.delete(task.url)
+      }
+
       if (tasks[num].status === 'downloaded')
         fsExtra.removeSync(tasks[num].directory)
 
@@ -176,8 +387,22 @@ export class M3u8Service extends EventEmitter {
     const taskM = this.m3u8Tasks.get(task.url)
     if (taskM)
       taskM.pause()
-    else
+
+    // Pause aria2 downloads
+    const gids = this.aria2Gids.get(task.url)
+    if (gids && aria2Service?.isRunning()) {
+      for (const gid of gids) {
+        try {
+          await aria2Service.pause(gid)
+        }
+        catch (error) {
+          Logger.error('[M3u8Service] Failed to pause aria2 download:', error)
+        }
+      }
+    }
+    else {
       this.downloadTS(task)
+    }
   }
 
   async resumeTask(task: TaskItem) {
@@ -185,8 +410,22 @@ export class M3u8Service extends EventEmitter {
     const taskM = this.m3u8Tasks.get(task.url)
     if (taskM)
       taskM.resume()
-    else
+
+    // Resume aria2 downloads
+    const gids = this.aria2Gids.get(task.url)
+    if (gids && aria2Service?.isRunning()) {
+      for (const gid of gids) {
+        try {
+          await aria2Service.resume(gid)
+        }
+        catch (error) {
+          Logger.error('[M3u8Service] Failed to resume aria2 download:', error)
+        }
+      }
+    }
+    else {
       this.downloadTS(task)
+    }
   }
 
   /**
@@ -234,33 +473,27 @@ export class M3u8Service extends EventEmitter {
       return acc + cur.duration
     }, 0)
     const segmentCount = segments.length
-    let downloadedCount = 0
     console.log('streamDuration: ', streamDuration)
 
     if (!fs.existsSync(tsDir)) {
       console.log('tsDir', tsDir)
       fs.mkdirSync(tsDir, { recursive: true })
     }
+
     // download key
     const key = parser.manifest.segments[0].key?.uri
     if (key) {
       const url = `${baseURL}${key}`
       console.log('key', url)
       try {
-        await download(url, tsDir, {
-          headers: task.headers,
-          // agent: url.startsWith('https') ? proxy.https : proxy.http,
-          // filename: 'key',
-          retry: {
-            retries: 3,
-          },
-        })
+        await this.downloadFile(url, tsDir, 'key', task.headers)
       }
       catch (err) {
         console.error(err)
         Logger.error('[download] error key', url, err)
       }
     }
+
     if (this.m3u8Tasks.has(task.url)) {
       const taskM = this.m3u8Tasks.get(task.url)
       if (taskM.paused) {
@@ -271,24 +504,41 @@ export class M3u8Service extends EventEmitter {
         return
       }
     }
+
+    // Use aria2 if available, otherwise fall back to old method
+    if (aria2Service?.isRunning()) {
+      try {
+        await this.downloadSegmentsWithAria2(task, segments, baseURL, tsDir)
+        return
+      }
+      catch (error) {
+        Logger.error('[M3u8Service] aria2 download failed, falling back to legacy method:', error)
+        // Continue to legacy method
+      }
+    }
+
+    // Legacy fallback method using fetch
+    await this.downloadSegmentsLegacy(task, segments, baseURL, tsDir, segmentCount)
+  }
+
+  /**
+   * Legacy download method using fetch API
+   */
+  private async downloadSegmentsLegacy(task: TaskItem, segments: any[], baseURL: string, tsDir: string, segmentCount: number): Promise<void> {
+    let downloadedCount = 0
+
     // check if segments existed
     const existedSegments = fs.readdirSync(tsDir)
     console.log('existedSegments', existedSegments.length)
-    let count = 0
-    let needToDownloadCount = 0
+
     for (const segment of segments) {
-      const segmentFile = new URL(`${baseURL}${segment.uri}`).pathname.split('/').pop()
-      if (existedSegments.includes(segmentFile)) {
+      const segmentUrl = segment.uri.startsWith('http') ? segment.uri : `${baseURL}${segment.uri}`
+      const segmentFile = new URL(segmentUrl).pathname.split('/').pop()
+      if (existedSegments.includes(segmentFile))
         downloadedCount++
-        count++
-        // console.log('existed', segmentFile)
-      }
-      else {
-        needToDownloadCount++
-        // console.log('not existed', segmentFile)
-      }
     }
-    console.log('needToDownloadCount', needToDownloadCount)
+
+    console.log('needToDownloadCount', segmentCount - downloadedCount)
     await jsondb.update({
       ...task,
       segmentCount,
@@ -298,35 +548,19 @@ export class M3u8Service extends EventEmitter {
     })
     const newTaskArray = await jsondb.getDB()
     this.dialogService.updateProgress(newTaskArray)
-    console.log('count', count)
 
-    const promiseList = segments.map((segment, _index) => {
-      // eslint-disable-next-line no-async-promise-executor
+    const promiseList = segments.map((segment) => {
       return () => new Promise(async (resolve) => {
-        // console.log('segment', segment)
         try {
-          let url = ''
-          if (segment.uri.startsWith('http') || segment.uri.startsWith('https'))
-            url = segment.uri
-          else
-            url = `${baseURL}${segment.uri}`
+          const segmentUrl = segment.uri.startsWith('http') ? segment.uri : `${baseURL}${segment.uri}`
+          const segmentFile = new URL(segmentUrl).pathname.split('/').pop()
+          const segmentPath = join(tsDir, segmentFile)
 
-          const segmentFile = new URL(url).pathname.split('/').pop()
-          // const name = segment.uri
-          if (fs.existsSync(join(tsDir, segmentFile))) {
-            // log.info('[download] already existed, skip segment', segment)
-            // downloadedCount++
-            resolve({ state: 'existed', url })
+          if (fs.existsSync(segmentPath)) {
+            resolve({ state: 'existed', url: segmentUrl })
           }
           else {
-            await download(url, tsDir, {
-              headers: task.headers,
-              // agent: url.startsWith('https') ? proxy.https : proxy.http,
-              // filename: name,
-              retry: {
-                retries: 3,
-              },
-            })
+            await this.downloadFile(segmentUrl, tsDir, segmentFile, task.headers)
             downloadedCount++
             const status = downloadedCount === segmentCount ? 'downloaded' : 'downloading'
             await jsondb.update({
@@ -338,19 +572,21 @@ export class M3u8Service extends EventEmitter {
             })
             const newTaskArray = await jsondb.getDB()
             this.dialogService.updateProgress(newTaskArray)
-            resolve({ state: 'ok', url })
+            resolve({ state: 'ok', url: segmentUrl })
           }
         }
         catch (error) {
           console.error(error)
-          const url = `${baseURL}${segment.uri}`
-          Logger.error('[download] error segment', url, error)
-          resolve({ state: 'error', url })
+          const segmentUrl = segment.uri.startsWith('http') ? segment.uri : `${baseURL}${segment.uri}`
+          Logger.error('[download] error segment', segmentUrl, error)
+          resolve({ state: 'error', url: segmentUrl })
         }
       })
     })
+
     const taskM = new TaskManager(promiseList)
     this.m3u8Tasks.set(task.url, taskM)
+
     taskM.run(5).then(async () => {
       const results = taskM.res
       const errorCount = results.map((item, index) => item.state === 'error' ? index : null).filter(item => item !== null)

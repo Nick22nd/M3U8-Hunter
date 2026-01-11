@@ -14,6 +14,11 @@ export enum MessageName {
   openAppDir,
   pauseTask,
   resumeTask,
+  getAria2Config,
+  setAria2Config,
+  startAria2,
+  stopAria2,
+  getAria2Status,
 }
 export interface Message4Renderer {
   type: string
