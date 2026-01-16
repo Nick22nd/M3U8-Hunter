@@ -67,7 +67,7 @@ function registerService() {
       runServe()
     const snifferService = new Sniffer(win)
     snifferService.m3u8Find()
-    
+
     const dialogService = new DialogService(win)
     const m3u8Service = new M3u8Service(dialogService)
     serviceHub = new ServiceContainer(dialogService, m3u8Service)
@@ -252,7 +252,8 @@ const handlers = {
       if (!result.canceled) {
         const selectedDirectory = result.filePaths[0]
         console.log(selectedDirectory)
-        store.set('config.appDir', selectedDirectory)
+        // store.set('config.appDir', selectedDirectory)
+        store.set(`config.appDir.${process.platform}`, selectedDirectory)
         app.relaunch()
         app.exit()
       }

@@ -21,9 +21,9 @@ export function getDefaultLogDir(appName) {
 }
 
 export function getAppDataDir() {
-  const tmpDir = store.get('config.appDir') as string
+  const tmpDir = store.get(`config.appDir.${process.platform}`) as string
   if (tmpDir && fsExtra.pathExistsSync(tmpDir)) {
-    return store.get('config.appDir')
+    return store.get(`config.appDir.${process.platform}`)
   }
   else {
     const devDir = import.meta.env && import.meta.env.VITE_TMPDIR
@@ -35,11 +35,8 @@ export function getAppDataDir() {
 
 export function copyServerHtmlToAppData() {
   const appDir = getAppDataDir()
-  const serverHtml = join(process.env.DIST, 'server.html')
   const targetHtml = join(appDir, 'index.html')
   if (process.env.DIST && fs.existsSync(process.env.DIST))
-  // fsExtra.copyFileSync(serverHtml, targetHtml)
-
     return targetHtml
 }
 

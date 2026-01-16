@@ -60,7 +60,7 @@ export class Aria2Service extends EventTarget {
     this.enabled = config.enabled
 
     // Create a directory for aria2 session
-    const appDataDir = store.get('config.appDir') as string || join(os.homedir(), 'M3U8Hunter')
+    const appDataDir = store.get(`config.appDir.${process.platform}`) as string || join(os.homedir(), 'M3U8Hunter')
     this.configPath = join(appDataDir, 'aria2')
 
     if (!fs.existsSync(this.configPath))
@@ -132,12 +132,12 @@ export class Aria2Service extends EventTarget {
       `--rpc-listen-all=true`, // Allow connections from any host
       '--rpc-allow-origin-all',
       `--rpc-secret=${this.rpcSecret}`,
-      '--dir=' + this.configPath,
+      `--dir=${this.configPath}`,
       '--check-certificate=false',
       `--log=${logFile}`,
       `--save-session=${sessionFile}`,
-      '--input-file=' + sessionFile,
-      '--max-concurrent-downloads=' + this.concurrent,
+      `--input-file=${sessionFile}`,
+      `--max-concurrent-downloads=${this.concurrent}`,
       '--continue',
       '--always-resume=true',
       '--max-tries=5',
@@ -214,7 +214,7 @@ export class Aria2Service extends EventTarget {
     return new Promise((resolve) => {
       const checkProcess = spawn('aria2c', ['--version'])
       checkProcess.on('error', () => resolve(false))
-      checkProcess.on('close', (code) => resolve(code === 0))
+      checkProcess.on('close', code => resolve(code === 0))
       setTimeout(() => resolve(false), 3000) // Timeout after 3 seconds
     })
   }
@@ -313,7 +313,7 @@ export class Aria2Service extends EventTarget {
   /**
    * Get download status
    */
-  public async getStatus(gid: string): Promise<DownloadStatus> {
+  public async getStatus(_gid: string): Promise<DownloadStatus> {
     return await this.call('aria2.getGlobalOption', [])
   }
 
@@ -423,6 +423,7 @@ export class Aria2Service extends EventTarget {
 }
 
 // Singleton instance
+// eslint-disable-next-line import/no-mutable-exports
 export let aria2Service: Aria2Service | null = null
 
 export function initAria2Service(): Aria2Service {
