@@ -43,6 +43,11 @@ export interface TaskItem {
   downloadedCount?: number
   progress?: string
   retryCount?: number
+  og?: {
+    title: string
+    image: string
+    description: string
+  }
 }
 export interface FindedResource {
   url: string

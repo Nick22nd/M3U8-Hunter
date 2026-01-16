@@ -151,6 +151,21 @@ function urlChange(val: string | number) {
   // webview.value?.loadURL(val as string)
 }
 
+async function getOgData() {
+  const metaData: any[] = await webview.value?.executeJavaScript(`
+    Array.from(document.querySelectorAll('meta')).map(meta => ({
+      property: meta.getAttribute('property'),
+      content: meta.getAttribute('content')
+    }))
+  `)
+  const ogData = {
+    title: metaData.find(meta => meta.property === 'og:title')?.content || '',
+    image: metaData.find(meta => meta.property === 'og:image')?.content || '',
+    description: metaData.find(meta => meta.property === 'og:description')?.content || '',
+  }
+  return ogData
+}
+
 async function download(row: MediaMessage) {
   try {
     const rowRaw = toRaw(row)
@@ -169,12 +184,14 @@ async function download(row: MediaMessage) {
           message: `Your task name is:${value}`,
         })
         const defaultName = Date.now().toString()
+        const ogData = await getOgData()
         const newTask: TaskItem = {
           status: 'downloading',
           from: url.value,
           title: webview.value?.getTitle() || '',
           name: value || defaultName,
           ...rowRaw,
+          og: ogData,
         }
         const dowloadItem: Message4Renderer = {
           name: MessageName.downloadM3u8,
