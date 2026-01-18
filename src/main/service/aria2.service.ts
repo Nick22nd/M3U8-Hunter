@@ -264,9 +264,9 @@ export class Aria2Service extends EventTarget {
    * Add a download task
    */
   public async addDownload(options: DownloadOptions): Promise<string> {
-    const params: string[] = [options.url]
+    const params: any[] = [options.url]
 
-    const aria2Options: Record<string, string> = {
+    const aria2Options: Record<string, any> = {
       dir: options.dir,
     }
 
@@ -291,11 +291,11 @@ export class Aria2Service extends EventTarget {
    * Add multiple downloads (for batch TS segment downloads)
    */
   public async addDownloads(urls: string[], options: Omit<DownloadOptions, 'url'>): Promise<string[]> {
-    const params: [string[], Record<string, string>] = [
+    const params: any[] = [
       urls.map(url => url),
       {
         dir: options.dir,
-      },
+      } as Record<string, any>,
     ]
 
     if (options.headers) {
