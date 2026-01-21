@@ -6,32 +6,89 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+lerna-error.log*
 
+# Dependencies
 node_modules
+jspm_packages/
+
+# Build outputs
 dist
 dist-ssr
 dist-electron
 release
+release/
+out/
+
+# Environment files
+.env
+.env.local
+.env.*.local
 *.local
 
 # Editor directories and files
-.vscode/.debug.env
-.idea
-.DS_Store
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+.idea/
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+*.sublime-project
+*.sublime-workspace
 
-# lockfile
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Lockfile
 package-lock.json
 # pnpm-lock.yaml
 yarn.lock
 
-# custom
-tmp/*
-auto-imports.d.ts
+# Electron specific
+app.asar
+app/
+*.asar
 
+# Cache
+.cache/
+.parcel-cache/
+.vite/
+.temp/
+tmp/
+tmp/*
+
+# Auto-generated files
+auto-imports.d.ts
+components.d.ts
+typedoc.json
+
+# Testing
+coverage/
+.nyc_output/
+
+# Misc
+*.pid
+*.seed
+*.pid.lock
+.pnp.*
+.pnp.js
+
+# Claude specific
+.claude/settings.local.json
+
+# Project specific
 docs/node_modules
 docs/.vitepress
+fromCC/
