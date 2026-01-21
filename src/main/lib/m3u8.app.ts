@@ -6,10 +6,10 @@ import fsExtra from 'fs-extra'
 import Logger from 'electron-log'
 import type { DialogService } from '../service/dialog.service'
 import type { TaskItem } from '../common.types'
+import { aria2Service } from '../service/aria2.service'
 import { getAppDataDir, timeFormat } from './utils'
 import { jsondb } from './jsondb'
 import { TaskManager } from './promiseLimit'
-import { aria2Service } from '../service/aria2.service'
 
 export class M3u8Service extends EventEmitter {
   // static storagePath = getAppDataDir()
@@ -18,6 +18,7 @@ export class M3u8Service extends EventEmitter {
     request: 30000,
     response: 60000,
   }
+
   events: ['showPlaylistTaskDialog', 'updateProgress', 'showNotification']
   storagePath: any
   dialogService: DialogService
@@ -66,7 +67,7 @@ export class M3u8Service extends EventEmitter {
 
     // Fallback to fetch API
     const response = await fetch(url, {
-      headers: headers as HeadersInit,
+      headers: headers as Record<string, string>,
     })
 
     if (!response.ok)
@@ -186,7 +187,7 @@ export class M3u8Service extends EventEmitter {
     while (true) {
       // Check status of all downloads
       const statuses = await Promise.allSettled(
-        gids.map(gid => aria2Service!.tellStatus(gid))
+        gids.map(gid => aria2Service!.tellStatus(gid)),
       )
 
       let allComplete = true
@@ -483,10 +484,12 @@ export class M3u8Service extends EventEmitter {
     // download key
     const key = parser.manifest.segments[0].key?.uri
     if (key) {
-      const url = `${baseURL}${key}`
-      console.log('key', url)
+      const url = key.startsWith('http') ? key : `${baseURL}${key}`
+      // Extract filename from key URI (preserves original name like "6c03b187040c48ba.ts")
+      const keyFilename = new URL(url).pathname.split('/').pop()
+      console.log('key url:', url, 'filename:', keyFilename)
       try {
-        await this.downloadFile(url, tsDir, 'key', task.headers)
+        await this.downloadFile(url, tsDir, keyFilename, task.headers)
       }
       catch (err) {
         console.error(err)
@@ -550,37 +553,39 @@ export class M3u8Service extends EventEmitter {
     this.dialogService.updateProgress(newTaskArray)
 
     const promiseList = segments.map((segment) => {
-      return () => new Promise(async (resolve) => {
-        try {
-          const segmentUrl = segment.uri.startsWith('http') ? segment.uri : `${baseURL}${segment.uri}`
-          const segmentFile = new URL(segmentUrl).pathname.split('/').pop()
-          const segmentPath = join(tsDir, segmentFile)
+      return () => new Promise((resolve) => {
+        (async () => {
+          try {
+            const segmentUrl = segment.uri.startsWith('http') ? segment.uri : `${baseURL}${segment.uri}`
+            const segmentFile = new URL(segmentUrl).pathname.split('/').pop()
+            const segmentPath = join(tsDir, segmentFile)
 
-          if (fs.existsSync(segmentPath)) {
-            resolve({ state: 'existed', url: segmentUrl })
+            if (fs.existsSync(segmentPath)) {
+              resolve({ state: 'existed', url: segmentUrl })
+            }
+            else {
+              await this.downloadFile(segmentUrl, tsDir, segmentFile, task.headers)
+              downloadedCount++
+              const status = downloadedCount === segmentCount ? 'downloaded' : 'downloading'
+              await jsondb.update({
+                ...task,
+                segmentCount,
+                downloadedCount,
+                progress: `${downloadedCount}/${segmentCount}`,
+                status,
+              })
+              const newTaskArray = await jsondb.getDB()
+              this.dialogService.updateProgress(newTaskArray)
+              resolve({ state: 'ok', url: segmentUrl })
+            }
           }
-          else {
-            await this.downloadFile(segmentUrl, tsDir, segmentFile, task.headers)
-            downloadedCount++
-            const status = downloadedCount === segmentCount ? 'downloaded' : 'downloading'
-            await jsondb.update({
-              ...task,
-              segmentCount,
-              downloadedCount,
-              progress: `${downloadedCount}/${segmentCount}`,
-              status,
-            })
-            const newTaskArray = await jsondb.getDB()
-            this.dialogService.updateProgress(newTaskArray)
-            resolve({ state: 'ok', url: segmentUrl })
+          catch (error) {
+            console.error(error)
+            const segmentUrl = segment.uri.startsWith('http') ? segment.uri : `${baseURL}${segment.uri}`
+            Logger.error('[download] error segment', segmentUrl, error)
+            resolve({ state: 'error', url: segmentUrl })
           }
-        }
-        catch (error) {
-          console.error(error)
-          const segmentUrl = segment.uri.startsWith('http') ? segment.uri : `${baseURL}${segment.uri}`
-          Logger.error('[download] error segment', segmentUrl, error)
-          resolve({ state: 'error', url: segmentUrl })
-        }
+        })()
       })
     })
 
