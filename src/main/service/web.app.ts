@@ -50,13 +50,44 @@ export function runServe() {
 
 function getLocalNetworkIP() {
   const networkInterfaces = os.networkInterfaces()
+  // Priority keywords for network adapters (in order of preference)
+  const priorities = ['以太网', 'WLAN', 'Wireless', 'Wi-Fi', 'WiFi', '无线局域网']
+  // Keywords to skip (virtual adapters)
+  const skipKeywords = ['WSL', 'Hyper-V', 'VMware', 'VirtualBox', 'vEthernet', '未知适配器', 'Loopback', 'Tunnel']
+
+  let bestMatch: { ip: string, priority: number } | null = null
+
   for (const name of Object.keys(networkInterfaces)) {
+    // Skip adapters with skip keywords
+    if (skipKeywords.some(keyword => name.includes(keyword)))
+      continue
+
+    // Calculate priority score based on adapter name
+    let priority = -1
+    for (let i = 0; i < priorities.length; i++) {
+      if (name.includes(priorities[i])) {
+        priority = priorities.length - i // Higher index = lower priority
+        break
+      }
+    }
+
     for (const net of networkInterfaces[name]) {
-      // Skip over non-IPv4 and internal (i.e. 127.0.0.1) addresses
-      if (net.family === 'IPv4' && !net.internal)
-        return net.address
+      // Skip over non-IPv4 and internal addresses
+      if (net.family === 'IPv4' && !net.internal) {
+        // If this is a priority adapter, return it immediately
+        if (priority > 0)
+          return net.address
+
+        // Otherwise, keep track of the first valid IP (fallback)
+        if (!bestMatch) {
+          bestMatch = { ip: net.address, priority }
+        }
+      }
     }
   }
+
+  // Return the best match found, or undefined if no valid IP found
+  return bestMatch?.ip
 }
 
 // const localNetworkIP = getLocalNetworkIP();
