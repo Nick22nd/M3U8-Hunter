@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { useDark } from '@vueuse/core'
 import { Film, Globe, Info, ListChecks, Settings } from 'lucide-vue-next'
-import { ref } from 'vue'
 import { useRoute } from 'vue-router'
 
 const myRoutes = [

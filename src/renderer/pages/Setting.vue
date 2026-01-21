@@ -185,7 +185,9 @@ const buttonGroup = [
 
       <h3>Aria2 Status</h3>
       <div v-if="aria2Running" class="status-info">
-        <el-text type="success">Aria2 is running</el-text>
+        <el-text type="success">
+          Aria2 is running
+        </el-text>
         <div v-if="aria2Status" class="status-details">
           <el-text>Active: {{ aria2Status.numActive }}</el-text>
           <el-text>Waiting: {{ aria2Status.numWaiting }}</el-text>
@@ -194,7 +196,9 @@ const buttonGroup = [
         </div>
       </div>
       <div v-else class="status-info">
-        <el-text type="info">Aria2 is not running</el-text>
+        <el-text type="info">
+          Aria2 is not running
+        </el-text>
       </div>
 
       <div class="flex gap-2 mt-2">

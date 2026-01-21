@@ -14,12 +14,12 @@ it('app directory path', () => {
 })
 
 function generateTask(index) {
-  return () => new Promise(((resolve) => { // Include 'void' as the argument in the Promise constructor
+  return () => new Promise((resolve) => { // Include 'void' as the argument in the Promise constructor
     setTimeout(() => {
       // console.log('Task done', index)
       resolve(index)
     }, Math.random() * 10)
-  }))
+  })
 }
 const tasks = Array.from({
   length: 100,

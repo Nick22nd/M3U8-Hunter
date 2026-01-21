@@ -2,7 +2,7 @@
 import { ref, toRaw } from 'vue'
 import { ElMessage, ElMessageBox, ElTable } from 'element-plus'
 import { Check, FolderClosed, Link, Pause, Play, RefreshCw, Trash, Youtube } from 'lucide-vue-next'
-import { useRoute, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 import type { Message4Renderer, TaskItem } from '../common.types'
 import { MessageName, TabList } from '../common.types'
 import { useTaskStore } from '../stores'
