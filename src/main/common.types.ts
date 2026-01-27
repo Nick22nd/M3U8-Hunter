@@ -19,6 +19,7 @@ export enum MessageName {
   startAria2,
   stopAria2,
   getAria2Status,
+  migrateTasks,
 }
 export interface Message4Renderer {
   type: string
@@ -36,7 +37,8 @@ export interface TaskItem {
   durationStr?: string
   name?: string
   from?: string
-  createTime?: number
+  taskId: string
+  createdAt?: number
   title?: string
   directory?: string
   segmentCount?: number
@@ -48,6 +50,12 @@ export interface TaskItem {
     image: string
     description: string
   }
+  folderConflict?: {
+    originalName: string
+    resolvedName: string
+    resolutionMethod: 'suffix' | 'taskId'
+  }
+  createTime?: number
 }
 export interface FindedResource {
   url: string

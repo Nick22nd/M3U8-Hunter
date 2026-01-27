@@ -259,6 +259,9 @@ const handlers = {
       }
     })
   },
+  [MessageName.migrateTasks]: async () => {
+    return await serviceHub.m3u8Service.migrateTasks()
+  },
 }
 
 ipcMain.handle('msg', async (event, arg) => {

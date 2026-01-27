@@ -171,9 +171,12 @@ async function download(row: MediaMessage) {
     const rowRaw = toRaw(row)
     console.log('download', url, row)
 
-    ElMessageBox.prompt(`Please input your task name${webview.value?.getURL()}`, 'Tip', {
+    const pageTitle = webview.value?.getTitle() || ''
+
+    ElMessageBox.prompt('Please input your task name', 'Tip', {
       confirmButtonText: 'OK',
       cancelButtonText: 'Cancel',
+      inputValue: pageTitle,
       // inputPattern:
       //   /[\w!#$%&'*+/=?^_`{|}~-]+(?:\.[\w!#$%&'*+/=?^_`{|}~-]+)*@(?:[\w](?:[\w-]*[\w])?\.)+[\w](?:[\w-]*[\w])?/,
       // inputErrorMessage: 'Invalid Email',
@@ -183,13 +186,14 @@ async function download(row: MediaMessage) {
           type: 'success',
           message: `Your task name is:${value}`,
         })
-        const defaultName = Date.now().toString()
         const ogData = await getOgData()
         const newTask: TaskItem = {
           status: 'downloading',
           from: url.value,
-          title: webview.value?.getTitle() || '',
-          name: value || defaultName,
+          title: pageTitle,
+          name: value,
+          taskId: '',
+          createdAt: Date.now(),
           ...rowRaw,
           og: ogData,
         }

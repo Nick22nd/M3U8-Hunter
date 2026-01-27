@@ -10,6 +10,9 @@ import { aria2Service } from '../service/aria2.service'
 import { getAppDataDir, timeFormat } from './utils'
 import { jsondb } from './jsondb'
 import { TaskManager } from './promiseLimit'
+import { generateTaskId } from './id-generator'
+import { resolveFolderConflict, sanitizeFolderName } from './folder-utils'
+import { migrateLegacyTasks } from './migrate-db'
 
 export class M3u8Service extends EventEmitter {
   // static storagePath = getAppDataDir()
@@ -36,11 +39,33 @@ export class M3u8Service extends EventEmitter {
     return new Date().getTime()
   }
 
+  public async migrateTasks() {
+    return await migrateLegacyTasks()
+  }
+
   public async getTasks() {
     // jsondb.init()
     const data = await jsondb.getDB() as TaskItem[]
     // console.log('data', data)
     return data
+  }
+
+  /**
+   * Download og image to target directory
+   */
+  private async downloadOgImage(ogData: { image: string }, targetPath: string): Promise<void> {
+    if (!ogData || !ogData.image)
+      return
+
+    try {
+      const imageUrl = ogData.image
+      const filename = new URL(imageUrl).pathname.split('/').pop() || 'cover.jpg'
+      await this.downloadFile(imageUrl, targetPath, filename)
+      Logger.info(`[M3u8Service] Downloaded og image: ${filename}`)
+    }
+    catch (error) {
+      Logger.error('[M3u8Service] Failed to download og image:', error)
+    }
   }
 
   /**
@@ -248,13 +273,37 @@ export class M3u8Service extends EventEmitter {
     const m3u8Url = videoItem.url
     const headers = videoItem.headers
     const sampleFilename = new URL(m3u8Url).pathname.split('/').pop()
-    const defaultName = new Date().getTime().toString()
-    const dirName = videoItem.name || defaultName
-    console.log('@@@dirName', dirName)
+
+    // Generate unique task ID if not provided
+    const taskId = videoItem.taskId || generateTaskId()
+    const createdAt = videoItem.createdAt || new Date().getTime()
+
+    // Sanitize folder name
+    const sanitizedName = videoItem.name
+      ? sanitizeFolderName(videoItem.name)
+      : taskId
+
+    // Detect and resolve folder conflicts
+    const conflictResolution = resolveFolderConflict(targetPath, sanitizedName, taskId)
+    const dirName = conflictResolution.resolvedName
+    console.log('@@@dirName', dirName, 'resolution:', conflictResolution.resolutionMethod)
+
     targetPath = join(targetPath, dirName)
-    if (!fs.existsSync(targetPath)) {
-      console.log('targetPath', targetPath)
-      fs.mkdirSync(targetPath, { recursive: true })
+    console.log('targetPath', targetPath)
+    fs.mkdirSync(targetPath, { recursive: true })
+
+    // Download og image if available
+    if (videoItem.og) {
+      await this.downloadOgImage(videoItem.og, targetPath)
+    }
+
+    // Notify renderer if conflict was resolved
+    if (conflictResolution.originalName !== conflictResolution.resolvedName) {
+      const message = conflictResolution.resolutionMethod === 'suffix'
+        ? `Folder "${conflictResolution.originalName}" already exists. Using "${conflictResolution.resolvedName}" instead.`
+        : `Too many conflicts. Using task ID as folder name: "${conflictResolution.resolvedName}"`
+
+      this.dialogService.showNotification('Folder Conflict', message)
     }
 
     try {
@@ -270,6 +319,8 @@ export class M3u8Service extends EventEmitter {
             status: 'downloaded',
             duration,
             durationStr: timeFormat(duration),
+            taskId,
+            createdAt,
             directory: targetPath,
           }
           await jsondb.update(newTask)
@@ -308,8 +359,12 @@ export class M3u8Service extends EventEmitter {
             status: 'downloaded',
             duration,
             durationStr: timeFormat(duration),
-            createTime: videoItem.createTime || new Date().getTime(),
+            taskId,
+            createdAt,
             directory: targetPath,
+            folderConflict: conflictResolution.originalName !== conflictResolution.resolvedName
+              ? conflictResolution
+              : undefined,
           }
           await jsondb.update(newTask)
           const notification = {
@@ -599,7 +654,7 @@ export class M3u8Service extends EventEmitter {
       console.log('task ok', okCount.length)
       console.log('task error', errorCount.length)
       const newTaskArrays = await jsondb.getDB()
-      const newTask = newTaskArrays.tasks.find(item => item.createTime === task.createTime)
+      const newTask = newTaskArrays.tasks.find(item => item.taskId === task.taskId)
       if (taskM.paused && taskM.res.length !== taskM.tasks.length) {
         await jsondb.update({
           ...newTask,

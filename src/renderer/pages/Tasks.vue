@@ -16,6 +16,7 @@ const multipleSelection = ref<TaskItem[]>([])
 const search = ref('')
 const tableRef = ref<null | InstanceType<typeof ElTable>>(null)
 const scrollTop = ref(0)
+const migrating = ref(false)
 onMounted(() => {
   if (tableRef.value) {
     // console.log('table', tableRef.value)
@@ -61,7 +62,7 @@ function deleteItem(task: TaskItem) {
   console.log('handleClick', multipleSelection.value)
   console.log('handleClick', toRaw(task))
 
-  const num = taskStore.tasks.findIndex(item => item.url === task.url)
+  const num = taskStore.tasks.findIndex(item => item.taskId === task.taskId)
   ElMessageBox.confirm(
     'Are you sure to delete this task and files?',
     'Warning',
@@ -176,6 +177,43 @@ function resumeTask(task: TaskItem) {
   }
   sendMsgToMainProcess(newMessage)
 }
+
+async function handleMigrate() {
+  try {
+    migrating.value = true
+    const result = await window.electron.ipcRenderer.invoke('msg', {
+      name: MessageName.migrateTasks,
+      data: null,
+    })
+
+    if (result.success) {
+      ElMessage({
+        type: 'success',
+        message: result.message || 'Migration completed',
+        duration: 5000,
+      })
+      // Refresh task list
+      await taskStore.loadTasks()
+    }
+    else {
+      ElMessage({
+        type: 'error',
+        message: result.message || 'Migration failed',
+        duration: 5000,
+      })
+    }
+  }
+  catch (error) {
+    ElMessage({
+      type: 'error',
+      message: `Migration error: ${(error as Error).message}`,
+      duration: 5000,
+    })
+  }
+  finally {
+    migrating.value = false
+  }
+}
 </script>
 
 <template>
@@ -219,7 +257,17 @@ function resumeTask(task: TaskItem) {
       </el-table-column>
       <el-table-column fixed="right" label="Operations" min-width="150">
         <template #header>
-          <el-input v-model="search" size="small" placeholder="Type to search" clearable />
+          <div class="flex items-center gap-2">
+            <el-input v-model="search" size="small" placeholder="Type to search" clearable />
+            <el-button
+              type="primary"
+              size="small"
+              :loading="migrating"
+              @click="handleMigrate"
+            >
+              Migrate Tasks
+            </el-button>
+          </div>
         </template>
         <template #default="scope">
           <div class="flex justify-start items-center flex-wrap">
