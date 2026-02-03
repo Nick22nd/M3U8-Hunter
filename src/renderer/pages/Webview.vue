@@ -3,8 +3,9 @@ import type { Ref } from 'vue'
 import { onMounted, ref, toRaw } from 'vue'
 import { ArrowLeft, ArrowRight, RefreshCw, Search, X } from 'lucide-vue-next'
 import { useStorage } from '@vueuse/core'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import TopBar from '../components/TopBar.vue'
+import DownloadDialog from '../components/DownloadDialog.vue'
 import type { Message4Renderer, TaskItem } from '../common.types'
 import { MessageName } from '../common.types'
 import { useFindedMediaStore, useTaskStore } from '../stores/'
@@ -14,7 +15,10 @@ const findedMediaStore = useFindedMediaStore()
 const canGoBack = ref(false)
 const canGoForward = ref(false)
 const domReady = ref(false)
+const downloadDialogVisible = ref(false)
+const selectedTask = ref<MediaMessage | null>(null)
 const { sendMsg: sendMsgToMainProcess } = window.electron
+const taskStore = useTaskStore()
 const url = ref('')
 interface HistoryRecord {
   [key: string]: number
@@ -23,11 +27,13 @@ const history = useStorage('history', [], localStorage) as Ref<string[]>
 const historyRecord = useStorage('historyRecord', {}, localStorage) as Ref<HistoryRecord>
 type webviewType = Electron.WebviewTag | null
 const webview = ref(null) as Ref<webviewType>
-const taskStore = useTaskStore()
+const inputUrl = ref('')
+
 watch(() => taskStore.task2webviewUrl, (newUrl, oldUrl) => {
   console.log('new: ', newUrl, 'old: ', oldUrl)
   urlChange(newUrl)
 })
+
 interface MediaMessage {
   headers: {
     [key: string]: string
@@ -35,14 +41,89 @@ interface MediaMessage {
   type: string
   url: string
 }
-const inputUrl = ref('')
+
+async function getOgData() {
+  try {
+    const metaData: any[] = await webview.value?.executeJavaScript(`
+      Array.from(document.querySelectorAll('meta')).map(meta => ({
+        name: meta.getAttribute('name'),
+        property: meta.getAttribute('property'),
+        content: meta.getAttribute('content')
+      }))
+    `)
+    const ogData = {
+      title: metaData.find(meta => meta.property === 'og:title')?.content || '',
+      image: metaData.find(meta => meta.property === 'og:image')?.content || '',
+      description: metaData.find(meta => meta.property === 'og:description')?.content || '',
+    }
+    return ogData
+  }
+  catch (error) {
+    console.error('Error getting og data:', error)
+    return {
+      title: '',
+      image: '',
+      description: '',
+    }
+  }
+}
+
+async function handleConfirm(task: TaskItem) {
+  try {
+    const ogData = await getOgData()
+    const newTask: TaskItem = {
+      status: 'downloading',
+      from: url.value,
+      title: webview.value?.getTitle() || '',
+      name: task.name,
+      taskId: '',
+      createdAt: Date.now(),
+      ...task,
+      og: ogData,
+    }
+    const dowloadItem: Message4Renderer = {
+      name: MessageName.downloadM3u8,
+      data: newTask,
+      type: 'download',
+    }
+    const data = await sendMsgToMainProcess(dowloadItem)
+    console.log('[main]:', data)
+    downloadDialogVisible.value = false
+    ElMessage({
+      type: 'success',
+      message: `Task created: ${task.name}`,
+    })
+  }
+  catch (error) {
+    console.error('Download error:', error)
+    ElMessage.error('Failed to create task')
+    downloadDialogVisible.value = false
+  }
+}
+
+function download(row: MediaMessage) {
+  console.log('download', url, row)
+  selectedTask.value = row
+  downloadDialogVisible.value = true
+}
+
+function writeClipboard(row: MediaMessage) {
+  const rowRaw = toRaw(row)
+  console.log('writeClipboard', row)
+  navigator.clipboard.writeText(rowRaw.url)
+  ElMessage({
+    type: 'success',
+    message: 'Copy success',
+  })
+}
+
 function openDevTool() {
   if (webview.value?.isDevToolsOpened())
     webview.value?.closeDevTools()
-
   else
     webview.value?.openDevTools()
 }
+
 function refreshPage() {
   if (domReady.value) {
     webview.value?.reload()
@@ -52,9 +133,11 @@ function refreshPage() {
     domReady.value = true
   }
 }
+
 function goBack() {
   webview.value?.goBack()
 }
+
 function goForward() {
   webview.value?.goForward()
 }
@@ -71,7 +154,7 @@ onMounted(() => {
   inputUrl.value = url.value
   webview.value?.addEventListener('dom-ready', () => {
     console.log('dom-ready')
-    // webview.value?.openDevTools()
+    webview.value?.openDevTools()
     webview.value?.insertCSS(`
       @font-face {
         font-family: system;
@@ -79,25 +162,22 @@ onMounted(() => {
         font-weight: 300;
         src: local(".NewYork-Regular");
       }
-  
+
       h1 {
         font-family: "system";
       }
     `)
     webview.value?.executeJavaScript(`
-    Array.from(document.querySelectorAll('meta')).map(meta => ({
-      name: meta.getAttribute('name'),
-      property: meta.getAttribute('property'),
-      content: meta.getAttribute('content')
-    }))
-`).then((metaData) => {
+      Array.from(document.querySelectorAll('meta')).map(meta => ({
+        name: meta.getAttribute('name'),
+        property: meta.getAttribute('property'),
+        content: meta.getAttribute('content')
+      }))
+    `).then((metaData) => {
       console.log('Meta data:', metaData)
     }).catch((error) => {
       console.error('Error getting meta data:', error)
     })
-
-    // const content = urlMetadata(null, { parseResponseObject: })
-    console.log('dom-ready', webview.value?.getTitle())
   })
   webview.value?.addEventListener('new-window', (e: any) => {
     console.log('new-window', e)
@@ -108,18 +188,6 @@ onMounted(() => {
   const navigateEvent = (e: { url: string }) => {
     console.log('will-navigate', e.url)
     url.value = e.url
-
-    if (!history.value.includes(e.url)) {
-      history.value.push(e.url)
-    }
-    else {
-      // move item to last position
-      const indexOfItem = history.value.indexOf(e.url)
-      const lastOne = history.value.length - 1
-      history.value[indexOfItem] = history.value[lastOne]
-      history.value[lastOne] = e.url
-    }
-    clearFindResource()
   }
   webview.value?.addEventListener('will-navigate', navigateEvent)
   webview.value?.addEventListener('did-navigate', (e) => {
@@ -148,82 +216,7 @@ onActivated(() => {
 function urlChange(val: string | number) {
   console.log('urlChange', val)
   url.value = val as string
-  // webview.value?.loadURL(val as string)
-}
-
-async function getOgData() {
-  const metaData: any[] = await webview.value?.executeJavaScript(`
-    Array.from(document.querySelectorAll('meta')).map(meta => ({
-      property: meta.getAttribute('property'),
-      content: meta.getAttribute('content')
-    }))
-  `)
-  const ogData = {
-    title: metaData.find(meta => meta.property === 'og:title')?.content || '',
-    image: metaData.find(meta => meta.property === 'og:image')?.content || '',
-    description: metaData.find(meta => meta.property === 'og:description')?.content || '',
-  }
-  return ogData
-}
-
-async function download(row: MediaMessage) {
-  try {
-    const rowRaw = toRaw(row)
-    console.log('download', url, row)
-
-    const pageTitle = webview.value?.getTitle() || ''
-
-    ElMessageBox.prompt('Please input your task name', 'Tip', {
-      confirmButtonText: 'OK',
-      cancelButtonText: 'Cancel',
-      inputValue: pageTitle,
-      // inputPattern:
-      //   /[\w!#$%&'*+/=?^_`{|}~-]+(?:\.[\w!#$%&'*+/=?^_`{|}~-]+)*@(?:[\w](?:[\w-]*[\w])?\.)+[\w](?:[\w-]*[\w])?/,
-      // inputErrorMessage: 'Invalid Email',
-    })
-      .then(async ({ value }) => {
-        ElMessage({
-          type: 'success',
-          message: `Your task name is:${value}`,
-        })
-        const ogData = await getOgData()
-        const newTask: TaskItem = {
-          status: 'downloading',
-          from: url.value,
-          title: pageTitle,
-          name: value,
-          taskId: '',
-          createdAt: Date.now(),
-          ...rowRaw,
-          og: ogData,
-        }
-        const dowloadItem: Message4Renderer = {
-          name: MessageName.downloadM3u8,
-          data: newTask,
-          type: 'download',
-        }
-        const data = await sendMsgToMainProcess(dowloadItem)
-        console.log('[main]:', data)
-      })
-      .catch(() => {
-        ElMessage({
-          type: 'info',
-          message: 'Input canceled',
-        })
-      })
-  }
-  catch (error) {
-    console.error(error)
-  }
-}
-function writeClipboard(row: MediaMessage) {
-  const rowRaw = toRaw(row)
-  console.log('writeClipboard', row)
-  navigator.clipboard.writeText(rowRaw.url)
-  ElMessage({
-    type: 'success',
-    message: 'Copy success',
-  })
+  webview.value?.loadURL(val as string)
 }
 </script>
 
@@ -267,8 +260,6 @@ function writeClipboard(row: MediaMessage) {
           <el-table-column type="index" width="50" />
           <el-table-column width="70" property="type" label="type" />
           <el-table-column :show-overflow-tooltip="true" class="truncate" width="300" property="url" label="url" />
-          <!-- <el-table-column :show-overflow-tooltip="true" class="truncate" width="150" property="headers"
-            label="headers" /> -->
           <el-table-column fixed="right" label="Operations" width="150">
             <template #default="scope">
               <el-button link type="primary" size="small" @click.prevent="download(scope.row)">
@@ -282,6 +273,7 @@ function writeClipboard(row: MediaMessage) {
         </el-table>
       </el-popover>
     </TopBar>
+    <DownloadDialog v-model="downloadDialogVisible" :task="selectedTask" @confirm="handleConfirm" />
     <webview ref="webview" :src="url" class="flex-1 w-full" allowpopups />
   </div>
 </template>
