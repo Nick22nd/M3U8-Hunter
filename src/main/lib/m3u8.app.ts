@@ -148,14 +148,20 @@ export class M3u8Service extends EventEmitter {
     const segmentCount = segments.length
     let downloadedCount = 0
 
-    // Check existing segments
+    // Check existing segments (use Set to avoid counting duplicates)
     const existedSegments = fs.readdirSync(tsDir)
+    const processedSegments = new Set<string>()
     for (const segment of segments) {
       const segmentUrl = segment.uri.startsWith('http') ? segment.uri : `${baseURL}${segment.uri}`
       const segmentFile = new URL(segmentUrl).pathname.split('/').pop()
-      if (existedSegments.includes(segmentFile))
+      if (existedSegments.includes(segmentFile) && !processedSegments.has(segmentFile)) {
         downloadedCount++
+        processedSegments.add(segmentFile)
+      }
     }
+
+    // Ensure downloadedCount doesn't exceed segmentCount
+    downloadedCount = Math.min(downloadedCount, segmentCount)
 
     // Prepare download URLs
     const urlsToDownload: string[] = []
@@ -206,7 +212,7 @@ export class M3u8Service extends EventEmitter {
    * Monitor aria2 downloads and update progress
    */
   private async monitorAria2Downloads(task: TaskItem, gids: string[], segmentCount: number, initialDownloaded: number): Promise<void> {
-    let completedCount = initialDownloaded
+    const completedGids = new Set<string>()
     let lastUpdateTime = Date.now()
 
     while (true) {
@@ -225,13 +231,16 @@ export class M3u8Service extends EventEmitter {
             allComplete = false
           else if (status.status === 'error')
             hasError = true
-          else if (status.status === 'complete')
-            completedCount++
+          else if (status.status === 'complete' && !completedGids.has(result.value.gid))
+            completedGids.add(result.value.gid)
         }
         else {
           allComplete = false
         }
       }
+
+      // Calculate current completed count (initial + new completions)
+      const completedCount = Math.min(initialDownloaded + completedGids.size, segmentCount)
 
       // Update progress periodically (every 2 seconds)
       if (Date.now() - lastUpdateTime > 2000) {
@@ -585,16 +594,22 @@ export class M3u8Service extends EventEmitter {
   private async downloadSegmentsLegacy(task: TaskItem, segments: any[], baseURL: string, tsDir: string, segmentCount: number): Promise<void> {
     let downloadedCount = 0
 
-    // check if segments existed
+    // check if segments existed (use Set to avoid counting duplicates)
     const existedSegments = fs.readdirSync(tsDir)
+    const processedSegments = new Set<string>()
     console.log('existedSegments', existedSegments.length)
 
     for (const segment of segments) {
       const segmentUrl = segment.uri.startsWith('http') ? segment.uri : `${baseURL}${segment.uri}`
       const segmentFile = new URL(segmentUrl).pathname.split('/').pop()
-      if (existedSegments.includes(segmentFile))
+      if (existedSegments.includes(segmentFile) && !processedSegments.has(segmentFile)) {
         downloadedCount++
+        processedSegments.add(segmentFile)
+      }
     }
+
+    // Ensure downloadedCount doesn't exceed segmentCount
+    downloadedCount = Math.min(downloadedCount, segmentCount)
 
     console.log('needToDownloadCount', segmentCount - downloadedCount)
     await jsondb.update({

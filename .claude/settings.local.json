@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(npm run lint)",
-      "Skill(glm-plan-usage:usage-query-skill)"
+      "Skill(glm-plan-usage:usage-query-skill)",
+      "Bash(npm run build)",
+      "Bash(npm test -- --run)"
     ]
   }
 }
