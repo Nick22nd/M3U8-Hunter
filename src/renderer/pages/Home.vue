@@ -24,6 +24,11 @@ watch(() => route.query.from, (from) => {
   if (from === 'tasks')
     autoPlay.value = true
 }, { immediate: true })
+
+// Get current task og data
+const currentTask = computed(() => {
+  return taskStore.tasks.find(task => task.url === taskStore.playUrl)
+})
 onMounted(() => {
   console.log('mounted', playHistory.value, taskStore)
   // load the last play url
@@ -64,7 +69,7 @@ onMounted(() => {
   console.log('lastViewTime', lastViewTime)
   setTimeout(() => {
     // dplayer.value?.video.play()
-    dplayer.value && (dplayer.value.video.currentTime = lastViewTime)
+    void (dplayer.value && (dplayer.value.video.currentTime = lastViewTime))
   }, 100)
   // console.log('dp', dp.plugins.hls)
   // dp.play()
@@ -121,7 +126,7 @@ function urlChange() {
 </script>
 
 <template>
-  <el-scrollbar height="95vh">
+  <el-scrollbar class="h-full">
     <h2 class="font-sans text-xl truncate" :title="taskStore.playerTitle">
       {{ taskStore.playerTitle }}
     </h2>
@@ -134,7 +139,9 @@ function urlChange() {
         <VueQrcode :value="taskStore.playUrl || taskStore.urlPrefix" @ready="onReady" />
       </el-popover>
     </div>
-    <div ref="videoDom" class="border w-full" />
+    <div v-if="currentTask?.og?.image" class="w-full" style="margin-top: 16px;">
+      <img :src="currentTask.og.image" :alt="currentTask.og.title || 'Cover'" class="w-full" style="object-fit: contain; max-height: calc(100vh - 180px);">
+    </div>
   </el-scrollbar>
 </template>
 
