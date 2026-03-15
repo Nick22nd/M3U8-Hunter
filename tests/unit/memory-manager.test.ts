@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { MemoryManager } from '../../src/main/core/memory-manager'
 
-describe('MemoryManager', () => {
+describe('memoryManager', () => {
   let memoryManager: MemoryManager
 
   beforeEach(() => {
@@ -20,7 +20,7 @@ describe('MemoryManager', () => {
 
     it('should provide memory usage history', () => {
       // Force some memory activity
-      const data = new Array(1000000).fill('test')
+      const data = Array.from({ length: 1000000 }).fill('test')
 
       const stats1 = memoryManager.getMemoryStats()
       memoryManager.recordMemoryUsage('test_operation')

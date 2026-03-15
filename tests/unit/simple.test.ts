@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-describe('Simple test', () => {
+describe('simple test', () => {
   it('should add numbers correctly', () => {
     const result = 2 + 2
     expect(result).toBe(4)

@@ -7,7 +7,7 @@ export class ProgressManager {
   private static instance: ProgressManager
   private updateInterval: number = 2000 // 2 seconds
   private pendingUpdates: Map<string, any> = new Map()
-  private updateTimer: NodeJS.Timeout | null = null
+  private updateTimer: ReturnType<typeof setTimeout> | null = null
   private maxBufferSize = 100
 
   private constructor() {
@@ -73,7 +73,7 @@ export class ProgressManager {
   /**
    * Batch update multiple tasks status
    */
-  async updateMultipleStatus(updates: Array<{ taskId: string; status: string }>): Promise<void> {
+  async updateMultipleStatus(updates: Array<{ taskId: string, status: string }>): Promise<void> {
     for (const update of updates) {
       this.pendingUpdates.set(update.taskId, { status })
     }

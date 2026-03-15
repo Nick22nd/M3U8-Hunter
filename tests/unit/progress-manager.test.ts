@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ProgressManager } from '../../src/main/core/progress-manager'
 
-describe('ProgressManager', () => {
+describe('progressManager', () => {
   let progressManager: ProgressManager
 
   beforeEach(() => {

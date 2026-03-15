@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { CacheManager } from '../../src/main/core/cache-manager'
 
-describe('CacheManager', () => {
+describe('cacheManager', () => {
   let cacheManager: CacheManager
 
   beforeEach(() => {
@@ -47,7 +47,7 @@ describe('CacheManager', () => {
     })
   })
 
-  describe('TTL (Time To Live)', () => {
+  describe('tTL (Time To Live)', () => {
     it('should expire items after TTL', () => {
       const key = 'expiring_key'
       cacheManager.set(key, { data: 'test' }, { ttl: 100 })
@@ -79,7 +79,7 @@ describe('CacheManager', () => {
     })
   })
 
-  describe('LRU (Least Recently Used) eviction', () => {
+  describe('lRU (Least Recently Used) eviction', () => {
     it('should evict least recently used items when cache is full', () => {
       const maxSize = 3
       cacheManager = CacheManager.getInstance({ maxSize })

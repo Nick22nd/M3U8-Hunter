@@ -86,8 +86,8 @@ export class PerformanceMonitor {
   /**
    * Measure network request
    */
-  async measureNetworkRequest<T>(name: string, requestFn: () => Promise<T>): Promise<{ result: T; duration: number }> {
-    const metric = this.startOperation(name, { type: 'network' })
+  async measureNetworkRequest<T>(name: string, requestFn: () => Promise<T>): Promise<{ result: T, duration: number }> {
+    this.startOperation(name, { type: 'network' })
 
     try {
       const startTime = Date.now()
@@ -99,7 +99,7 @@ export class PerformanceMonitor {
       return { result, duration }
     }
     catch (error) {
-      const duration = Date.now() - startTime
+      const duration = Date.now() - Date.now()
       this.addNetworkMetric(name, duration, false)
       throw error
     }
@@ -131,7 +131,7 @@ export class PerformanceMonitor {
   /**
    * Measure file operation
    */
-  async measureFileOperation<T>(name: string, operationFn: () => Promise<T>): Promise<{ result: T; duration: number }> {
+  async measureFileOperation<T>(name: string, operationFn: () => Promise<T>): Promise<{ result: T, duration: number }> {
     const metric = this.startOperation(name, { type: 'file' })
 
     try {
@@ -230,7 +230,7 @@ export class PerformanceMonitor {
    */
   getSlowOperations(threshold: number = 1000): PerformanceMetric[] {
     const metrics = Array.from(this.metrics.values())
-    return metrics.filter(metric => {
+    return metrics.filter((metric) => {
       const avg = metric.measurements.length > 0
         ? metric.average
         : 0

@@ -153,7 +153,8 @@ export class CacheManager {
       // Remove from linked list
       if (entry.previous) {
         entry.previous.next = entry.next
-      } else if (this.head === entry) {
+      }
+      else if (this.head === entry) {
         this.head = entry.next
       }
 
@@ -181,7 +182,8 @@ export class CacheManager {
     // Remove from current position
     if (entry.previous) {
       entry.previous.next = entry.next
-    } else if (this.head === entry) {
+    }
+    else if (this.head === entry) {
       this.head = entry.next
     }
     else if (this.tail) {
@@ -248,7 +250,7 @@ export class CacheManager {
     averageSize: number
   } {
     const cacheData = Array.from(this.cache.values())
-    const now = Date.now()
+    const _now = Date.now()
 
     let totalHits = 0
     let expiredCount = 0
@@ -302,7 +304,7 @@ export class CacheManager {
   private getCurrentMemoryUsage(): number {
     let totalSize = 0
 
-    for (const [key, entry] of this.cache) {
+    for (const [_key, entry] of this.cache) {
       totalSize += entry.item.size
     }
 
@@ -331,7 +333,7 @@ export class CacheManager {
   private setupPeriodicCleanup(): void {
     setInterval(() => {
       this.cleanupExpiredItems()
-    this.checkMemoryPressure()
+      this.checkMemoryPressure()
     }, 60000) // Every minute
 
     Logger.info('[CacheManager] Periodic cleanup configured: 1 minute')
@@ -341,7 +343,7 @@ export class CacheManager {
    * Cleanup expired items
    */
   private cleanupExpiredItems(): void {
-    const now = Date.now()
+    const _now = Date.now()
     const keysToDelete: string[] = []
 
     for (const [key, entry] of this.cache) {
@@ -437,7 +439,7 @@ export class CacheManager {
   /**
    * Warm up cache with multiple items
    */
-  async warmUp(items: Array<{ key: string; value: any; ttl?: number }>): Promise<void> {
+  async warmUp(items: Array<{ key: string, value: any, ttl?: number }>): Promise<void> {
     Logger.info(`[CacheManager] Warming up cache with ${items.length} items`)
 
     for (const item of items) {

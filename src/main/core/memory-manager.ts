@@ -8,7 +8,7 @@ export class MemoryManager {
   private memorySnapshots: Map<string, any> = new Map()
   private maxSnapshotAge = 60000 // 1 minute
   private memoryThreshold = 100 * 1024 * 1024 // 100 MB
-  private cleanupInterval: NodeJS.Timeout | null = null
+  private cleanupInterval: ReturnType<typeof setTimeout> | null = null
 
   private constructor() {
     this.setupMemoryMonitoring()
@@ -126,9 +126,9 @@ export class MemoryManager {
    * Trigger garbage collection
    */
   triggerGC(): void {
-    if (global.gc && typeof global.gc === 'function') {
+    if (globalThis.gc && typeof globalThis.gc === 'function') {
       Logger.debug('[MemoryManager] Triggering garbage collection')
-      global.gc()
+      globalThis.gc()
     }
   }
 
@@ -208,12 +208,12 @@ export class MemoryManager {
     }
   } {
     let highPressureCount = 0
-    let gcTriggerCount = 0
+    const gcTriggerCount = 0
     let totalRss = 0
     let totalHeapUsed = 0
     let count = 0
 
-    for (const [key, snapshot] of this.memorySnapshots) {
+    for (const [_key, snapshot] of this.memorySnapshots) {
       if (snapshot.pressure >= 80) {
         highPressureCount++
       }

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { PerformanceMonitor } from '../../src/main/core/performance-monitor'
 
-describe('PerformanceMonitor', () => {
+describe('performanceMonitor', () => {
   let performanceMonitor: PerformanceMonitor
 
   beforeEach(() => {
