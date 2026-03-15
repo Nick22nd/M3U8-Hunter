@@ -5,6 +5,10 @@ import type { DownloadResult, DownloadStatus, TaskItem } from '../../shared/type
 import { type DownloadStatus as Aria2DownloadStatus, aria2Service } from '../service/aria2.service'
 import { Aria2Service } from '../service/aria2.service'
 import { BaseDownloadEngine } from './base-download-engine'
+import { performanceMonitor } from './performance-monitor'
+import { progressManager } from './progress-manager'
+import { cacheManager } from './cache-manager'
+import { memoryManager } from './memory-manager'
 
 /**
  * Aria2 download engine implementation
@@ -46,9 +50,26 @@ export class Aria2Engine extends BaseDownloadEngine {
     const taskId = task.taskId
     Logger.info(`[Aria2Engine] Starting download for task: ${taskId}`)
 
+    // Start performance monitoring
+    const operationId = performanceMonitor.startOperation(`aria2_download_${taskId}`, {
+      taskId,
+      url: task.url,
+      engine: 'Aria2',
+    })
+
     try {
-      // Parse M3U8 file to get segments
-      const segments = await this.parseSegments(task)
+      // Monitor memory usage
+      memoryManager.trackOperation(`aria2_download_${taskId}`)
+
+      // Parse M3U8 file to get segments (with caching)
+      const cacheKey = `segments_${taskId}`
+      let segments = cacheManager.get(cacheKey)
+
+      if (!segments) {
+        segments = await this.parseSegments(task)
+        cacheManager.set(cacheKey, segments, { ttl: 3600000 }) // Cache for 1 hour
+      }
+
       const segmentCount = segments.length
 
       // Check existing segments
@@ -59,6 +80,8 @@ export class Aria2Engine extends BaseDownloadEngine {
 
       if (urlsToDownload.length === 0) {
         Logger.info(`[Aria2Engine] All segments already downloaded for task: ${taskId}`)
+        performanceMonitor.endOperation(operationId)
+        memoryManager.stopTracking(`aria2_download_${taskId}`)
         return {
           success: true,
           downloaded: segmentCount,
@@ -70,8 +93,11 @@ export class Aria2Engine extends BaseDownloadEngine {
       const gids = await this.addBatchDownloads(task, urlsToDownload)
       this.taskGids.set(taskId, gids)
 
-      // Start monitoring downloads
+      // Start monitoring downloads with progress manager
       await this.monitorDownloads(task, gids, segmentCount, downloadedCount)
+
+      performanceMonitor.endOperation(operationId, true)
+      memoryManager.stopTracking(`aria2_download_${taskId}`)
 
       return {
         success: true,
@@ -81,6 +107,8 @@ export class Aria2Engine extends BaseDownloadEngine {
     }
     catch (error) {
       Logger.error(`[Aria2Engine] Download failed for task: ${taskId}`, error)
+      performanceMonitor.endOperation(operationId, false)
+      memoryManager.stopTracking(`aria2_download_${taskId}`)
       this.emitError(taskId, error as Error)
       throw error
     }
@@ -263,7 +291,18 @@ export class Aria2Engine extends BaseDownloadEngine {
     initialDownloaded: number,
   ): Promise<void> {
     const completedGids = new Set<string>()
-    let lastUpdateTime = Date.now()
+    const taskId = task.taskId
+
+    // Register task with progress manager
+    progressManager.registerTask(taskId, {
+      total: segmentCount,
+      downloaded: initialDownloaded,
+      status: 'downloading',
+      metadata: {
+        engine: 'Aria2',
+        gids: gids.length,
+      },
+    })
 
     while (true) {
       if (!aria2Service)
@@ -293,19 +332,11 @@ export class Aria2Engine extends BaseDownloadEngine {
 
       const completedCount = Math.min(initialDownloaded + completedGids.size, segmentCount)
 
-      // Update progress periodically (every 2 seconds)
-      if (Date.now() - lastUpdateTime > 2000) {
-        const progress: DownloadStatus = {
-          status: hasError ? 'failed' : (allComplete ? 'completed' : 'downloading'),
-          progress: this.calculateProgress(completedCount, segmentCount),
-          speed: 0,
-          downloaded: completedCount,
-          total: segmentCount,
-        }
-
-        this.emitProgress(task.taskId, progress)
-        lastUpdateTime = Date.now()
-      }
+      // Update progress through progress manager (batch updates)
+      progressManager.updateProgress(taskId, {
+        downloaded: completedCount,
+        status: hasError ? 'failed' : (allComplete ? 'completed' : 'downloading'),
+      })
 
       if (allComplete || hasError)
         break
@@ -313,6 +344,9 @@ export class Aria2Engine extends BaseDownloadEngine {
       // Wait before checking again
       await new Promise(resolve => setTimeout(resolve, 1000))
     }
+
+    // Unregister task from progress manager
+    progressManager.unregisterTask(taskId)
   }
 
   /**

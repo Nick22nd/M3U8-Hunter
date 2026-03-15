@@ -12,15 +12,4 @@ const originalWarn = console.warn
 const originalInfo = console.info
 
 // Setup any test-specific configurations here
-beforeAll(() => {
-  console.log('Starting test suite...')
-})
-
-afterAll(() => {
-  console.log('Test suite completed')
-})
-
-// Restore console methods after each test
-afterEach(() => {
-  // Keep original console methods for debugging
-})
+// Note: beforeAll, afterAll, afterEach are available globally due to vitest.config.ts settings

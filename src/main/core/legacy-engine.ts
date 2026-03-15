@@ -4,6 +4,10 @@ import Logger from 'electron-log'
 import type { DownloadResult, DownloadStatus, TaskItem } from '../../shared/types'
 import { TaskManager } from '../lib/promiseLimit'
 import { BaseDownloadEngine } from './base-download-engine'
+import { performanceMonitor } from './performance-monitor'
+import { progressManager } from './progress-manager'
+import { cacheManager } from './cache-manager'
+import { memoryManager } from './memory-manager'
 
 /**
  * Legacy download engine implementation using fetch API
@@ -36,9 +40,26 @@ export class LegacyEngine extends BaseDownloadEngine {
     const taskId = task.taskId
     Logger.info(`[LegacyEngine] Starting download for task: ${taskId}`)
 
+    // Start performance monitoring
+    const operationId = performanceMonitor.startOperation(`legacy_download_${taskId}`, {
+      taskId,
+      url: task.url,
+      engine: 'Legacy',
+    })
+
     try {
-      // Parse M3U8 file to get segments
-      const segments = await this.parseSegments(task)
+      // Monitor memory usage
+      memoryManager.trackOperation(`legacy_download_${taskId}`)
+
+      // Parse M3U8 file to get segments (with caching)
+      const cacheKey = `segments_${taskId}`
+      let segments = cacheManager.get(cacheKey)
+
+      if (!segments) {
+        segments = await this.parseSegments(task)
+        cacheManager.set(cacheKey, segments, { ttl: 3600000 }) // Cache for 1 hour
+      }
+
       const segmentCount = segments.length
 
       // Check existing segments
@@ -54,6 +75,8 @@ export class LegacyEngine extends BaseDownloadEngine {
 
       if (downloadTasks.length === 0) {
         Logger.info(`[LegacyEngine] All segments already downloaded for task: ${taskId}`)
+        performanceMonitor.endOperation(operationId)
+        memoryManager.stopTracking(`legacy_download_${taskId}`)
         return {
           success: true,
           downloaded: segmentCount,
@@ -65,7 +88,7 @@ export class LegacyEngine extends BaseDownloadEngine {
       const taskManager = new TaskManager(downloadTasks)
       this.activeTasks.set(taskId, taskManager)
 
-      // Start monitoring progress
+      // Start monitoring progress with progress manager
       this.monitorProgress(task, taskManager, segmentCount, downloadedCount)
 
       // Run downloads with concurrency limit
@@ -77,6 +100,9 @@ export class LegacyEngine extends BaseDownloadEngine {
 
       Logger.info(`[LegacyEngine] Task ${taskId} completed: ${successCount} success, ${errorCount} errors`)
 
+      performanceMonitor.endOperation(operationId, true)
+      memoryManager.stopTracking(`legacy_download_${taskId}`)
+
       return {
         success: errorCount === 0,
         downloaded: successCount + downloadedCount,
@@ -85,6 +111,8 @@ export class LegacyEngine extends BaseDownloadEngine {
     }
     catch (error) {
       Logger.error(`[LegacyEngine] Download failed for task: ${taskId}`, error)
+      performanceMonitor.endOperation(operationId, false)
+      memoryManager.stopTracking(`legacy_download_${taskId}`)
       this.emitError(taskId, error as Error)
       throw error
     }
@@ -245,30 +273,33 @@ export class LegacyEngine extends BaseDownloadEngine {
     initialDownloaded: number,
   ): void {
     const taskId = task.taskId
-    let lastUpdateTime = Date.now()
+
+    // Register task with progress manager
+    progressManager.registerTask(taskId, {
+      total: segmentCount,
+      downloaded: initialDownloaded,
+      status: 'downloading',
+      metadata: {
+        engine: 'Legacy',
+        concurrency: this.concurrency,
+      },
+    })
 
     const interval = setInterval(() => {
       try {
         const completedCount = initialDownloaded + taskManager.res.length
         const total = segmentCount
 
-        // Update progress periodically (every 2 seconds)
-        if (Date.now() - lastUpdateTime > 2000) {
-          const progress: DownloadStatus = {
-            status: taskManager.paused ? 'paused' : 'downloading',
-            progress: this.calculateProgress(completedCount, total),
-            speed: 0,
-            downloaded: completedCount,
-            total,
-          }
-
-          this.emitProgress(taskId, progress)
-          lastUpdateTime = Date.now()
-        }
+        // Update progress through progress manager (batch updates)
+        progressManager.updateProgress(taskId, {
+          downloaded: completedCount,
+          status: taskManager.paused ? 'paused' : 'downloading',
+        })
 
         // Clear interval when task is complete
         if (completedCount >= total || taskManager.paused) {
           clearInterval(interval)
+          progressManager.unregisterTask(taskId)
 
           if (completedCount >= total) {
             const result: DownloadResult = {
@@ -283,6 +314,7 @@ export class LegacyEngine extends BaseDownloadEngine {
       catch (error) {
         Logger.error(`[LegacyEngine] Progress monitoring error for task ${taskId}:`, error)
         clearInterval(interval)
+        progressManager.unregisterTask(taskId)
       }
     }, 1000)
   }
