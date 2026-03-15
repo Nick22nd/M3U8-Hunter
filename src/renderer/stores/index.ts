@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
+import { MessageName } from '../common.types'
 import type { FindedResource, TabList, TaskItem } from '../common.types'
 
 export const useFindedMediaStore = defineStore('FindedMedia', () => {
@@ -29,6 +30,16 @@ export const useTaskStore = defineStore('tasks', () => {
   const playerTitle = ref('')
   const tasks = ref<TaskItem[]>([])
   const tasksCount = computed(() => tasks.value.length)
+  const taskStatusCounts = computed(() => {
+    return tasks.value.reduce((acc, task) => {
+      const status = task.status || 'unfinished'
+      acc[status] = (acc[status] || 0) + 1
+      return acc
+    }, {} as Record<string, number>)
+  })
+  const completedTaskCount = computed(() => (taskStatusCounts.value.downloaded || 0) + (taskStatusCounts.value.success || 0))
+  const activeTaskCount = computed(() => (taskStatusCounts.value.downloading || 0) + (taskStatusCounts.value.waiting || 0))
+  const failedTaskCount = computed(() => (taskStatusCounts.value.failed || 0) + (taskStatusCounts.value.unfinished || 0))
   const task2webviewUrl = ref('')
   const serverConfig = ref<ServerConfig>({
     ip: 'localhost',
@@ -47,9 +58,39 @@ export const useTaskStore = defineStore('tasks', () => {
   function getTasks() {
     return tasks.value
   }
+  async function loadTasks() {
+    const response = await window.electron.sendMsg({
+      name: MessageName.getTasks,
+      data: null,
+      type: 'getTasks',
+    })
+
+    if (response?.data?.tasks)
+      tasks.value = response.data.tasks
+
+    return tasks.value
+  }
   function switchTab(tab: TabName) {
     activeTab.value = tab
     console.log('activeTab', activeTab.value, playUrl.value)
   }
-  return { activeTab, tasks, tasksCount, playUrl, task2webviewUrl, urlPrefix, playerTitle, serverConfig, addTask, deleteTask, getTasks, switchTab }
+  return {
+    activeTab,
+    tasks,
+    tasksCount,
+    taskStatusCounts,
+    completedTaskCount,
+    activeTaskCount,
+    failedTaskCount,
+    playUrl,
+    task2webviewUrl,
+    urlPrefix,
+    playerTitle,
+    serverConfig,
+    addTask,
+    deleteTask,
+    getTasks,
+    loadTasks,
+    switchTab,
+  }
 })
