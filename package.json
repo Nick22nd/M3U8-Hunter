@@ -38,7 +38,7 @@
     "@types/dplayer": "^1.25.5",
     "@vitejs/plugin-vue": "^5.0.1",
     "@vitest/ui": "^1.4.0",
-    "@vue/eslint-config-prettier": "^9.0.0",
+    
     "@vue/eslint-config-typescript": "^13.0.0",
     "@vueuse/core": "^10.9.0",
     "async": "^3.2.5",
@@ -62,7 +62,7 @@
     "m3u8-parser": "^7.1.0",
     "pinia": "^2.1.7",
     "portfinder": "^1.0.32",
-    "prettier": "^3.2.5",
+    
     "qrcode": "1",
     "simple-git-hooks": "^2.11.1",
     "tree-kill": "^1.2.2",
