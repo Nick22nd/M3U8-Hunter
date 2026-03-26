@@ -7,6 +7,7 @@ import { createPinia } from 'pinia'
 import VueQrcode from '@chenfengyuan/vue-qrcode'
 import App from './App.vue'
 import { router } from './routes/routers'
+import HlsPlugin from './plugins/hls'
 // import './style.css'
 import './demos/ipc'
 // If you want use Node.js, the`nodeIntegration` needs to be enabled in the Main process.
@@ -18,7 +19,7 @@ const app = createApp(App)
 // from https://stackoverflow.com/questions/66024797/vue-3-failed-to-resolve-component-with-global-components
 app.component(VueQrcode.name || 'VueQrcode', VueQrcode)
 
-app.use(router).use(ElementPlus).use(pinia).mount('#app')
+app.use(router).use(ElementPlus).use(pinia).use(HlsPlugin).mount('#app')
   .$nextTick(() => {
     postMessage({ payload: 'removeLoading' }, '*')
   })

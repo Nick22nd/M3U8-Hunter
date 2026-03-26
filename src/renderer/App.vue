@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { onMounted, ref, toRaw } from 'vue'
+import { computed, onMounted, ref, toRaw } from 'vue'
 import type { MediaMessage, Message4Renderer, TaskItem } from './common.types'
 import { MessageName } from './common.types'
 import { useFindedMediaStore, useTaskStore } from './stores/'
+import HlsPlayer from './components/HlsPlayer.vue'
 import SideBar from './components/SideBar.vue'
 import ToastContainer from './components/ToastContainer.vue'
 import { toast } from './composables/toast'
@@ -53,6 +54,21 @@ function getPlaylistLabel(playlist: PlayList) {
 }
 
 const { sendMsg, onReplyMsg } = window.electron
+
+// Compute a full URL for HLS preview from the selected playlist URI
+const hlsPreviewUrl = computed(() => {
+  if (!selectedUrl.value || !waitingTask.value)
+    return ''
+  if (selectedUrl.value.startsWith('http'))
+    return selectedUrl.value
+  if (selectedUrl.value) {
+    const rawURL = new URL(waitingTask.value.url)
+    const listURI = rawURL.pathname.split('/').pop()
+    const base = waitingTask.value.url.substring(0, waitingTask.value.url.indexOf(listURI ?? ''))
+    return `${base}${selectedUrl.value}`
+  }
+  return ''
+})
 onMounted(() => {
   sendMsg({ name: MessageName.getTasks, type: '', data: null })
   sendMsg({ name: MessageName.getServerConfig, type: '', data: null })
@@ -116,13 +132,17 @@ async function dowloadTS() {
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
       @click.self="centerDialogVisible = false"
     >
-      <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6">
+      <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-2xl mx-4 p-6">
         <h3 class="text-base font-semibold mb-1 text-gray-800 dark:text-gray-100">
           选择清晰度
         </h3>
         <p class="text-sm text-gray-400 mb-4">
           {{ waitingTask?.name }}
         </p>
+        <!-- HLS 预览播放器 -->
+        <div v-if="selectedUrl" class="mb-4 rounded-xl overflow-hidden bg-black">
+          <HlsPlayer :src="hlsPreviewUrl" />
+        </div>
         <div class="flex flex-col gap-2 max-h-64 overflow-y-auto pr-1">
           <button
             v-for="item in playlists"
