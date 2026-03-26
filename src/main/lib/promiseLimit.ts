@@ -6,14 +6,15 @@ export class TaskManager {
   tasks: (() => Promise<TaskState>)[] = []
   res: TaskState[] = []
   paused = false
+  private currentIndex = 0
+
   constructor(segments: any[]) {
-    //
     this.tasks = segments
     console.log('TaskManager', this.tasks.length)
   }
 
   generateTask(index: number) {
-    return () => new Promise<number>((resolve) => { // Include 'void' as the argument in the Promise constructor
+    return () => new Promise<number>((resolve) => {
       setTimeout(() => {
         console.log('Task done', index)
         resolve(index)
@@ -35,15 +36,13 @@ export class TaskManager {
       console.log('task error', errorCount.length)
     }).catch((error) => {
       console.error(error)
-      // Logger.error('[download] error', error)
     })
   }
 
   run(limit = 5) {
-    console.log('run')
+    console.log('run from index', this.currentIndex)
     return new Promise<void>((resolve, reject) => {
       let running = 0
-      let index = 0
       const next = () => {
         if (this.paused) {
           if (running === 0) {
@@ -55,13 +54,13 @@ export class TaskManager {
         if (running >= limit)
           return
 
-        if (index >= this.tasks.length) {
+        if (this.currentIndex >= this.tasks.length) {
           if (running === 0)
             resolve()
           return
         }
         running++
-        const task = this.tasks[index]
+        const task = this.tasks[this.currentIndex]
         task().then((res: TaskState) => {
           this.res.push(res)
           running--
@@ -69,7 +68,7 @@ export class TaskManager {
         }).catch((error) => {
           reject(error)
         })
-        index++
+        this.currentIndex++
         next()
       }
       next()

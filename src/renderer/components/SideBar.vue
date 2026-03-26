@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useDark, useToggle } from '@vueuse/core'
-import { Film, Globe, Info, ListChecks, Moon, Settings, Sunny } from 'lucide-vue-next'
+import { Film, Globe, Info, ListChecks, Moon, Settings, Sun } from 'lucide-vue-next'
 import { useRoute } from 'vue-router'
 import { useFindedMediaStore, useTaskStore } from '../stores'
 
@@ -103,7 +103,7 @@ watchEffect(() => {
         class="flex items-center gap-2 w-full px-3 py-2 rounded-xl text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
         @click="toggleDark()"
       >
-        <component :is="isDark ? Sunny : Moon" :size="16" />
+        <component :is="isDark ? Sun : Moon" :size="16" />
         <span>{{ isDark ? '切换浅色' : '切换深色' }}</span>
       </button>
     </div>

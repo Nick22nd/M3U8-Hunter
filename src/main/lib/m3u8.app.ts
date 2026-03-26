@@ -448,7 +448,7 @@ export class M3u8Service extends EventEmitter {
   }
 
   async pauseTask(task: TaskItem) {
-    await jsondb.update(task)
+    await jsondb.update({ ...task, status: 'paused' })
     const taskM = this.m3u8Tasks.get(task.url)
     if (taskM)
       taskM.pause()
@@ -465,9 +465,8 @@ export class M3u8Service extends EventEmitter {
         }
       }
     }
-    else {
-      this.downloadTS(task)
-    }
+    // NOTE: no else branch — legacy tasks are paused via taskM.pause() above;
+    // calling downloadTS here would immediately resume the just-paused task.
   }
 
   async resumeTask(task: TaskItem) {
