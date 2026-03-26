@@ -18,24 +18,27 @@ function openLink() {
 </script>
 
 <template>
-  <div class="test gap-4 flex-wrap flex justify-center flex-col items-start ">
-    <span class="self-center">About M3U8 Hunter</span>
-    <span>1. go to the explore page</span>
-    <span>2. input the url</span>
-    <span>3. if there is m3u8 file on the page there will be message tip on the left-bottom
-      button</span>
-    <span>4. click the button, select the m3u8 file to download</span>
-    <div class="">
-      if you has any problem, can report to
-      <a class=" hover:decoration-blue-500 underline decoration-sky-300 cursor-pointer" @click="openLink">
-        Github issue
-      </a>
+  <div class="h-full flex items-start justify-center p-8 overflow-y-auto">
+    <div class="max-w-md w-full text-left">
+      <h2 class="text-xl font-bold text-gray-800 dark:text-gray-100 mb-6">
+        About M3U8 Hunter
+      </h2>
+      <ol class="flex flex-col gap-3 text-sm text-gray-600 dark:text-gray-400 list-decimal list-inside">
+        <li>前往 <strong class="text-gray-800 dark:text-gray-200">Explore</strong> 页面</li>
+        <li>输入视频网站地址，等待页面加载</li>
+        <li>如果页面中有 M3U8 流，左下角按钮会显示数量提示</li>
+        <li>点击按钮，选择目标流地址后点击下载</li>
+      </ol>
+      <div class="mt-6 text-sm text-gray-500 dark:text-gray-500">
+        遇到问题？可以前往
+        <a
+          class="text-blue-500 hover:underline cursor-pointer"
+          @click="openLink"
+        >GitHub Issues</a>
+        反馈。
+      </div>
     </div>
   </div>
 </template>
 
-<style scoped>
-.test {
-  text-align: left;
-}
-</style>
+<style scoped></style>

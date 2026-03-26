@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ElMessage } from 'element-plus'
 import type { Message4Renderer } from '../common.types'
+import { toast } from '../composables/toast'
 import { MessageName } from '../common.types'
 
 interface Aria2Config {
@@ -71,7 +71,7 @@ async function setAria2Config(showMessage = true) {
   await sendMsgToMainProcess(newMessage)
   savingConfig.value = false
   if (showMessage)
-    ElMessage.success('Aria2 配置已保存')
+    toast.success('Aria2 配置已保存')
 }
 
 async function startAria2() {
@@ -164,275 +164,211 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="setting-page">
-    <section class="setting-hero">
+  <div class="flex flex-col gap-5 p-5 h-full overflow-y-auto">
+    <!-- Hero -->
+    <div class="flex items-center justify-between flex-wrap gap-3">
       <div>
-        <h2>下载体验设置</h2>
-        <p>集中管理 Aria2、应用目录和运行状态，减少频繁切换和误操作。</p>
+        <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-100 m-0">
+          下载体验设置
+        </h2>
+        <p class="text-sm text-gray-400 mt-1">
+          集中管理 Aria2、应用目录和运行状态。
+        </p>
       </div>
-      <el-button type="primary" :loading="savingConfig" @click="setAria2Config()">
+      <button
+        type="button"
+        :disabled="savingConfig"
+        class="px-4 py-2 text-sm bg-blue-500 text-white rounded-xl hover:bg-blue-600 disabled:opacity-40 transition-colors flex items-center gap-2"
+        @click="setAria2Config()"
+      >
+        <svg v-if="savingConfig" class="animate-spin" width="14" height="14" fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" /><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" /></svg>
         保存当前配置
-      </el-button>
-    </section>
+      </button>
+    </div>
 
-    <section class="summary-grid">
-      <div v-for="item in connectionSummary" :key="item.label" class="summary-card">
-        <span class="summary-label">{{ item.label }}</span>
-        <strong class="summary-value">{{ item.value }}</strong>
+    <!-- Summary cards -->
+    <div class="grid grid-cols-3 gap-3">
+      <div
+        v-for="item in connectionSummary"
+        :key="item.label"
+        class="rounded-2xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50 p-4"
+      >
+        <div class="text-xs text-gray-400 mb-2">
+          {{ item.label }}
+        </div>
+        <div class="text-lg font-semibold text-gray-800 dark:text-gray-100">
+          {{ item.value }}
+        </div>
       </div>
-    </section>
+    </div>
 
-    <section class="setting-grid">
-      <el-card shadow="hover" class="setting-card">
-        <template #header>
-          <div class="card-header">
-            <div>
-              <strong>应用目录与日志</strong>
-              <p>常用目录操作集中在一个区域，方便排查问题与切换数据位置。</p>
-            </div>
+    <!-- Main grid -->
+    <div class="grid grid-cols-2 gap-4">
+      <!-- Quick actions -->
+      <div class="rounded-2xl border border-gray-100 dark:border-gray-800 p-5">
+        <div class="mb-4">
+          <div class="font-semibold text-gray-800 dark:text-gray-100">
+            应用目录与日志
           </div>
-        </template>
-        <div class="action-list">
-          <div
-            v-for="item in quickActions" :key="item.text"
-            class="action-row"
-          >
+          <div class="text-sm text-gray-400 mt-1">
+            常用目录操作集中在一个区域。
+          </div>
+        </div>
+        <div class="flex flex-col divide-y divide-gray-50 dark:divide-gray-800">
+          <div v-for="item in quickActions" :key="item.text" class="flex items-center justify-between py-3">
             <div>
-              <div class="action-title">
+              <div class="text-sm font-medium text-gray-700 dark:text-gray-300">
                 {{ item.text }}
               </div>
-              <div class="action-desc">
+              <div class="text-xs text-gray-400 mt-0.5">
                 {{ item.desc }}
               </div>
             </div>
-            <el-button @click="item.func">
+            <button
+              type="button"
+              class="px-3 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors dark:text-gray-300"
+              @click="item.func"
+            >
               执行
-            </el-button>
+            </button>
           </div>
         </div>
-      </el-card>
+      </div>
 
-      <el-card shadow="hover" class="setting-card">
-        <template #header>
-          <div class="card-header">
-            <div>
-              <strong>Aria2 配置</strong>
-              <p>推荐先确认 RPC 地址和并发数，再按需启停服务。</p>
+      <!-- Aria2 config -->
+      <div class="rounded-2xl border border-gray-100 dark:border-gray-800 p-5">
+        <div class="flex items-center justify-between mb-5">
+          <div>
+            <div class="font-semibold text-gray-800 dark:text-gray-100">
+              Aria2 配置
             </div>
-            <el-tag :type="aria2Running ? 'success' : 'info'">
-              {{ aria2Running ? '运行中' : '未启动' }}
-            </el-tag>
+            <div class="text-sm text-gray-400 mt-1">
+              推荐先确认 RPC 地址和并发数。
+            </div>
           </div>
-        </template>
+          <span
+            class="px-2 py-0.5 rounded-full text-xs font-medium"
+            :class="aria2Running ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'"
+          >{{ aria2Running ? '运行中' : '未启动' }}</span>
+        </div>
 
-        <div class="config-grid">
-          <div class="config-row config-row--full">
+        <div class="flex flex-col gap-4">
+          <div class="flex items-center justify-between">
             <div>
-              <div class="action-title">
+              <div class="text-sm font-medium text-gray-700 dark:text-gray-300">
                 启用 Aria2
               </div>
-              <div class="action-desc">
-                启用后优先使用 Aria2 下载引擎处理任务。
+              <div class="text-xs text-gray-400 mt-0.5">
+                启用后优先使用 Aria2 下载引擎。
               </div>
             </div>
-            <el-switch v-model="aria2Config.enabled" />
+            <button
+              type="button" role="switch" :aria-checked="aria2Config.enabled"
+              class="relative inline-flex w-10 h-5 rounded-full transition-colors focus:outline-none"
+              :class="aria2Config.enabled ? 'bg-blue-500' : 'bg-gray-200 dark:bg-gray-700'"
+              @click="aria2Config.enabled = !aria2Config.enabled"
+            >
+              <span
+                class="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform"
+                :class="aria2Config.enabled ? 'translate-x-5' : 'translate-x-0'"
+              />
+            </button>
           </div>
 
-          <div class="config-row">
-            <span>RPC Host</span>
-            <el-input v-model="aria2Config.host" placeholder="127.0.0.1" />
+          <div class="grid grid-cols-2 gap-3">
+            <div class="flex flex-col gap-1">
+              <label class="text-xs text-gray-400">RPC Host</label>
+              <input
+                v-model="aria2Config.host" type="text" placeholder="127.0.0.1"
+                class="px-3 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              >
+            </div>
+            <div class="flex flex-col gap-1">
+              <label class="text-xs text-gray-400">RPC Port</label>
+              <input
+                v-model.number="aria2Config.port" type="number" min="1" max="65535"
+                class="px-3 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              >
+            </div>
           </div>
 
-          <div class="config-row">
-            <span>RPC Port</span>
-            <el-input-number v-model="aria2Config.port" :min="1" :max="65535" class="w-full" />
+          <div class="flex flex-col gap-1">
+            <label class="text-xs text-gray-400">RPC Secret</label>
+            <input
+              v-model="aria2Config.secret" type="password" placeholder="可选"
+              class="px-3 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            >
           </div>
 
-          <div class="config-row config-row--full">
-            <span>RPC Secret</span>
-            <el-input v-model="aria2Config.secret" type="password" show-password placeholder="可选" />
+          <div class="flex flex-col gap-2">
+            <div class="flex items-center justify-between">
+              <label class="text-xs text-gray-400">并发下载数</label>
+              <span class="text-xs font-semibold text-blue-500">{{ aria2Config.concurrent }}</span>
+            </div>
+            <input
+              v-model.number="aria2Config.concurrent" type="range" min="1" max="16"
+              class="w-full accent-blue-500"
+            >
+            <div class="flex justify-between text-xs text-gray-400">
+              <span>1</span><span>16</span>
+            </div>
           </div>
 
-          <div class="config-row config-row--full">
-            <span>Concurrent Downloads</span>
-            <el-slider v-model="aria2Config.concurrent" :min="1" :max="16" show-input />
+          <div class="flex gap-2 flex-wrap pt-1">
+            <button
+              type="button" :disabled="aria2Running"
+              class="px-3 py-1.5 text-xs rounded-lg bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-40 transition-colors"
+              @click="startAria2"
+            >
+              启动 Aria2
+            </button>
+            <button
+              type="button" :disabled="!aria2Running"
+              class="px-3 py-1.5 text-xs rounded-lg bg-red-500 text-white hover:bg-red-600 disabled:opacity-40 transition-colors"
+              @click="stopAria2"
+            >
+              停止 Aria2
+            </button>
+            <button
+              type="button" :disabled="!aria2Running"
+              class="px-3 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 transition-colors dark:text-gray-300"
+              @click="getAria2Status"
+            >
+              刷新状态
+            </button>
           </div>
         </div>
+      </div>
+    </div>
 
-        <div class="button-row">
-          <el-button type="primary" :disabled="aria2Running" @click="startAria2">
-            启动 Aria2
-          </el-button>
-          <el-button type="danger" :disabled="!aria2Running" @click="stopAria2">
-            停止 Aria2
-          </el-button>
-          <el-button :disabled="!aria2Running" @click="getAria2Status">
-            刷新状态
-          </el-button>
-        </div>
-      </el-card>
-    </section>
-
-    <el-card shadow="never" class="status-card">
-      <template #header>
-        <div class="card-header">
-          <div>
-            <strong>实时状态</strong>
-            <p>用于快速判断当前下载引擎的可用性。</p>
-          </div>
-        </div>
-      </template>
-
-      <div v-if="aria2Running" class="status-info">
-        <el-text type="success">
+    <!-- Status -->
+    <div class="rounded-2xl border border-gray-100 dark:border-gray-800 p-5">
+      <div class="font-semibold text-gray-800 dark:text-gray-100 mb-1">
+        实时状态
+      </div>
+      <div class="text-sm text-gray-400 mb-4">
+        用于快速判断当前下载引擎的可用性。
+      </div>
+      <div v-if="aria2Running">
+        <div class="text-sm text-green-600 dark:text-green-400 mb-3">
           Aria2 当前已连接并可用
-        </el-text>
-        <div v-if="aria2Status" class="status-details">
-          <div class="status-pill">
-            Active: {{ aria2Status.numActive }}
-          </div>
-          <div class="status-pill">
-            Waiting: {{ aria2Status.numWaiting }}
-          </div>
-          <div class="status-pill">
-            Stopped: {{ aria2Status.numStopped }}
-          </div>
-          <div class="status-pill">
-            Speed: {{ (Number(aria2Status.downloadSpeed) / 1024).toFixed(2) }} KB/s
-          </div>
+        </div>
+        <div v-if="aria2Status" class="flex flex-wrap gap-2">
+          <span class="px-3 py-1.5 text-xs rounded-full bg-gray-100 dark:bg-gray-800 dark:text-gray-300">Active: {{ aria2Status.numActive }}</span>
+          <span class="px-3 py-1.5 text-xs rounded-full bg-gray-100 dark:bg-gray-800 dark:text-gray-300">Waiting: {{ aria2Status.numWaiting }}</span>
+          <span class="px-3 py-1.5 text-xs rounded-full bg-gray-100 dark:bg-gray-800 dark:text-gray-300">Stopped: {{ aria2Status.numStopped }}</span>
+          <span class="px-3 py-1.5 text-xs rounded-full bg-gray-100 dark:bg-gray-800 dark:text-gray-300">Speed: {{ (Number(aria2Status.downloadSpeed) / 1024).toFixed(2) }} KB/s</span>
         </div>
       </div>
-      <div v-else class="status-info">
-        <el-text type="info">
-          Aria2 未运行，系统将按当前配置回退到其他下载方式。
-        </el-text>
+      <div v-else class="text-sm text-gray-500">
+        Aria2 未运行，系统将按当前配置回退到其他下载方式。
       </div>
-    </el-card>
+    </div>
   </div>
 </template>
 
 <style scoped>
-.setting-page {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 20px;
-}
-
-.setting-hero,
-.card-header,
-.action-row,
-.config-row,
-.button-row,
-.status-details {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.setting-hero {
-  flex-wrap: wrap;
-}
-
-.setting-hero h2,
-.card-header p {
-  margin: 0;
-}
-
-.setting-hero p,
-.card-header p,
-.action-desc,
-.summary-label {
-  color: var(--el-text-color-secondary);
-}
-
-.summary-grid,
-.setting-grid {
-  display: grid;
-  gap: 16px;
-}
-
-.summary-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.setting-grid {
-  grid-template-columns: 1fr 1.2fr;
-}
-
-.summary-card,
-.status-card {
-  border: 1px solid var(--el-border-color-light);
-  border-radius: 16px;
-  padding: 16px;
-  background: var(--el-bg-color-overlay);
-}
-
-.summary-value,
-.action-title {
-  display: block;
-  font-weight: 600;
-}
-
-.summary-value {
-  margin-top: 8px;
-  font-size: 20px;
-}
-
-.setting-card {
-  border-radius: 18px;
-}
-
-.action-list,
-.status-info {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.action-row {
-  padding: 12px 0;
-  border-bottom: 1px solid var(--el-border-color-lighter);
-}
-
-.action-row:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
-}
-
-.config-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.config-row {
-  flex-direction: column;
-  align-items: flex-start;
-}
-
-.config-row--full {
-  grid-column: 1 / -1;
-}
-
-.button-row,
-.status-details {
-  flex-wrap: wrap;
-  margin-top: 16px;
-}
-
-.status-pill {
-  padding: 8px 12px;
-  border-radius: 999px;
-  background: var(--el-fill-color-light);
-}
-
 @media (max-width: 1024px) {
-  .summary-grid,
-  .setting-grid,
-  .config-grid {
-    grid-template-columns: 1fr;
-  }
+  .grid { grid-template-columns: 1fr !important; }
 }
 </style>

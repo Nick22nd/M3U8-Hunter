@@ -126,23 +126,46 @@ function urlChange() {
 </script>
 
 <template>
-  <el-scrollbar class="h-full">
-    <h2 class="font-sans text-xl truncate" :title="taskStore.playerTitle">
+  <div class="h-full overflow-y-auto flex flex-col gap-3 p-4">
+    <h2
+      v-if="taskStore.playerTitle"
+      class="text-base font-semibold truncate text-gray-800 dark:text-gray-200 m-0"
+      :title="taskStore.playerTitle"
+    >
       {{ taskStore.playerTitle }}
     </h2>
-    <div class="flex justify-between">
-      <el-input v-model="taskStore.playUrl" placeholder="Please input" @change="urlChange" />
-      <el-popover placement="top-start" :width="200" trigger="hover">
-        <template #reference>
-          <el-button>show QR</el-button>
-        </template>
-        <VueQrcode :value="taskStore.playUrl || taskStore.urlPrefix" @ready="onReady" />
-      </el-popover>
+
+    <div class="flex gap-2">
+      <input
+        v-model="taskStore.playUrl"
+        type="text"
+        placeholder="输入播放地址…"
+        class="flex-1 px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400 dark:text-gray-100"
+        @change="urlChange"
+      >
+      <div class="relative group">
+        <button
+          type="button"
+          class="h-full px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-300 transition-colors"
+        >
+          QR
+        </button>
+        <div class="absolute right-0 top-full mt-1 hidden group-hover:block z-10 bg-white dark:bg-gray-900 rounded-xl shadow-xl p-2 border border-gray-200 dark:border-gray-700">
+          <VueQrcode :value="taskStore.playUrl || taskStore.urlPrefix" @ready="onReady" />
+        </div>
+      </div>
     </div>
-    <div v-if="currentTask?.og?.image" class="w-full" style="margin-top: 16px;">
-      <img :src="currentTask.og.image" :alt="currentTask.og.title || 'Cover'" class="w-full" style="object-fit: contain; max-height: calc(100vh - 180px);">
+
+    <div ref="videoDom" class="flex-1 min-h-0" />
+
+    <div v-if="currentTask?.og?.image">
+      <img
+        :src="currentTask.og.image"
+        :alt="currentTask.og.title || 'Cover'"
+        class="w-full rounded-xl object-contain max-h-48"
+      >
     </div>
-  </el-scrollbar>
+  </div>
 </template>
 
 <style scoped></style>

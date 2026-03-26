@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import { ElNotification } from 'element-plus'
-import { useDark, useToggle } from '@vueuse/core'
-import { Moon, Sunny } from '@element-plus/icons-vue'
+import { onMounted, ref, toRaw } from 'vue'
 import type { MediaMessage, Message4Renderer, TaskItem } from './common.types'
 import { MessageName } from './common.types'
 import { useFindedMediaStore, useTaskStore } from './stores/'
 import SideBar from './components/SideBar.vue'
+import ToastContainer from './components/ToastContainer.vue'
+import { toast } from './composables/toast'
 
 const taskStore = useTaskStore()
 const centerDialogVisible = ref(false)
@@ -53,24 +52,18 @@ function getPlaylistLabel(playlist: PlayList) {
   return `URI - ${playlist.uri}`
 }
 
-const isDark = useDark()
-const toggleDark = useToggle(isDark)
-
-const { sendMsg: sendMsgToMainProcess, onReplyMsg } = window.electron
+const { sendMsg, onReplyMsg } = window.electron
 onMounted(() => {
-  console.log('mounted')
-  sendMsgToMainProcess({ name: MessageName.getTasks })
-  sendMsgToMainProcess({ name: MessageName.getServerConfig })
+  sendMsg({ name: MessageName.getTasks, type: '', data: null })
+  sendMsg({ name: MessageName.getServerConfig, type: '', data: null })
   onReplyMsg((msg: Message4Renderer) => {
-    const { data } = msg
-    // console.log('onReplyMsg', msg)
     if (msg.name === MessageName.getTasks) {
-      taskStore.tasks = msg.data.tasks || []
+      // msg.data is the array directly, not wrapped in { tasks: [] }
+      taskStore.tasks = Array.isArray(msg.data) ? msg.data : (msg.data?.tasks || [])
     }
     else if (msg.name === MessageName.findM3u8) {
-      // console.log('findM3u8', data)
-      const singleData = data as unknown as MediaMessage
-      store.addFindResource(singleData.browserVideoItem)
+      const d = msg.data as unknown as MediaMessage
+      store.addFindResource(d.browserVideoItem)
     }
     else if (msg.name === MessageName.getServerConfig) {
       taskStore.serverConfig = msg.data
@@ -78,129 +71,102 @@ onMounted(() => {
     else if (msg.name === MessageName.getPlaylist) {
       playlists.value = msg.data.playlists
       waitingTask.value = msg.data.task
+      selectedUrl.value = ''
       centerDialogVisible.value = true
     }
     else if (msg.name === MessageName.getNotification) {
       const { title, message } = msg.data
-      ElNotification({
-        title,
-        message,
-        // duration: 0,
-      })
+      toast.info(`${title}: ${message}`)
     }
   })
 })
 async function dowloadTS() {
-  centerDialogVisible.value = false
-  if (waitingTask.value) {
-    if (selectedUrl.value.startsWith('http')) {
-      waitingTask.value.url = selectedUrl.value
-    }
-    else {
-      const url = waitingTask.value.url
-      const rawURL = new URL(url)
-      const listURI = rawURL.pathname.split('/').pop()
-      const baserawURL = url.substring(0, url.indexOf(listURI ?? ''))
-      waitingTask.value.url = `${baserawURL}${selectedUrl.value}`
-    }
-  }
-  else {
-    console.error('waitingTask is undefined')
+  if (!waitingTask.value)
     return
+  centerDialogVisible.value = false
+  const task: TaskItem = { ...toRaw(waitingTask.value) }
+  if (selectedUrl.value.startsWith('http')) {
+    task.url = selectedUrl.value
   }
-  const oldTask = toRaw(waitingTask.value)
-  const newTask: TaskItem = {
-    ...oldTask,
+  else if (selectedUrl.value) {
+    const rawURL = new URL(task.url)
+    const listURI = rawURL.pathname.split('/').pop()
+    const base = task.url.substring(0, task.url.indexOf(listURI ?? ''))
+    task.url = `${base}${selectedUrl.value}`
   }
-  console.log('dowts,', newTask, oldTask)
-  const dowloadItem: Message4Renderer = {
-    name: MessageName.downloadM3u8,
-    data: newTask,
-    type: 'download',
-  }
-  await sendMsgToMainProcess(dowloadItem)
+  await sendMsg({ name: MessageName.downloadM3u8, data: task, type: 'download' })
   selectedUrl.value = ''
 }
 </script>
 
 <template>
-  <el-container class="h-screen">
+  <div class="flex h-screen overflow-hidden bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100">
     <SideBar />
-    <el-main class="p-0">
+    <main class="flex-1 overflow-hidden">
       <router-view v-slot="{ Component }">
         <keep-alive :include="['Webview', 'Tasks']">
           <component :is="Component" />
         </keep-alive>
       </router-view>
-    </el-main>
+    </main>
 
-    <el-dialog v-model="centerDialogVisible" title="Warning" width="500" center>
-      <span>Task Name: {{ waitingTask?.name }}</span>
-      <el-select v-model="selectedUrl" placeholder="Please select a zone">
-        <el-option v-for="item of playlists" :key="item.uri" :label="getPlaylistLabel(item)" :value="item.uri" />
-      </el-select>
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button @click="centerDialogVisible = false">
-            Cancel
-          </el-button>
-          <el-button type="primary" @click="dowloadTS">
-            Confirm
-          </el-button>
+    <!-- Playlist quality picker -->
+    <div
+      v-if="centerDialogVisible"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      @click.self="centerDialogVisible = false"
+    >
+      <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6">
+        <h3 class="text-base font-semibold mb-1 text-gray-800 dark:text-gray-100">
+          选择清晰度
+        </h3>
+        <p class="text-sm text-gray-400 mb-4">
+          {{ waitingTask?.name }}
+        </p>
+        <div class="flex flex-col gap-2 max-h-64 overflow-y-auto pr-1">
+          <button
+            v-for="item in playlists"
+            :key="item.uri"
+            type="button"
+            class="w-full text-left px-4 py-2.5 rounded-xl border text-sm transition-colors"
+            :class="selectedUrl === item.uri
+              ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+              : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'"
+            @click="selectedUrl = item.uri"
+          >
+            {{ getPlaylistLabel(item) }}
+          </button>
         </div>
-      </template>
-    </el-dialog>
-    <div class="fixed bottom-0 left-0 m-8">
-      <el-switch
-        v-model="isDark" inline-prompt :active-action-icon="Moon" :inactive-action-icon="Sunny"
-        @change="toggleDark(isDark)"
-      />
+        <div class="flex justify-end gap-3 mt-6">
+          <button
+            type="button"
+            class="px-4 py-2 rounded-xl text-sm border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            @click="centerDialogVisible = false"
+          >
+            取消
+          </button>
+          <button
+            type="button"
+            class="px-4 py-2 rounded-xl text-sm bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-40 transition-colors"
+            :disabled="!selectedUrl"
+            @click="dowloadTS"
+          >
+            确认下载
+          </button>
+        </div>
+      </div>
     </div>
-  </el-container>
+
+    <ToastContainer />
+  </div>
 </template>
 
 <style>
-#app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-  /* color: #2c3e50; */
-}
-
+*, *::before, *::after { box-sizing: border-box; }
 body {
   margin: 0;
   padding: 0;
-  --background-dark-color: #0d1117;
-  --background-light: #fff;
-  background-color: var(--background-light);
-}
-
-body.dark {
-  --background-dark-color: #0d1117;
-  --background-light: #fff;
-  background-color: var(--background-dark-color);
-}
-
-.container {
-  display: flex;
-  /* flex-direction: column; */
-  align-items: center;
-  justify-content: center;
-}
-.el-main {
-  padding: 1px;
-}
-
-.demo-tabs>.el-tabs__content {
-  padding: 0px;
-  /* color: #6b778c; */
-  /* font-size: 32px; */
-  font-weight: 600;
-}
-
-.el-tabs--right .el-tabs__content,
-.el-tabs--left .el-tabs__content {
-  height: 100%;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 </style>

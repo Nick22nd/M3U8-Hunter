@@ -1,14 +1,13 @@
 <script setup lang="ts">
 import type { Ref } from 'vue'
-import { onMounted, ref, toRaw } from 'vue'
+import { onMounted, ref, toRaw, watch } from 'vue'
 import { ArrowLeft, ArrowRight, RefreshCw, Search, X } from 'lucide-vue-next'
 import { useStorage } from '@vueuse/core'
-import { ElMessage } from 'element-plus'
-import TopBar from '../components/TopBar.vue'
 import DownloadDialog from '../components/DownloadDialog.vue'
-import type { Message4Renderer, TaskItem } from '../common.types'
+import type { TaskItem } from '../common.types'
 import { MessageName } from '../common.types'
 import { useFindedMediaStore, useTaskStore } from '../stores/'
+import { toast } from '../composables/toast'
 
 const { clearFindResource } = useFindedMediaStore()
 const findedMediaStore = useFindedMediaStore()
@@ -28,6 +27,7 @@ const historyRecord = useStorage('historyRecord', {}, localStorage) as Ref<Histo
 type webviewType = Electron.WebviewTag | null
 const webview = ref(null) as Ref<webviewType>
 const inputUrl = ref('')
+const mediaListVisible = ref(false)
 
 watch(() => taskStore.task2webviewUrl, (newUrl, oldUrl) => {
   console.log('new: ', newUrl, 'old: ', oldUrl)
@@ -42,61 +42,26 @@ interface MediaMessage {
   url: string
 }
 
-async function getOgData() {
-  try {
-    const metaData: any[] = await webview.value?.executeJavaScript(`
-      Array.from(document.querySelectorAll('meta')).map(meta => ({
-        name: meta.getAttribute('name'),
-        property: meta.getAttribute('property'),
-        content: meta.getAttribute('content')
-      }))
-    `)
-    const ogData = {
-      title: metaData.find(meta => meta.property === 'og:title')?.content || '',
-      image: metaData.find(meta => meta.property === 'og:image')?.content || '',
-      description: metaData.find(meta => meta.property === 'og:description')?.content || '',
-    }
-    return ogData
-  }
-  catch (error) {
-    console.error('Error getting og data:', error)
-    return {
-      title: '',
-      image: '',
-      description: '',
-    }
-  }
-}
-
 async function handleConfirm(task: TaskItem) {
   try {
-    const ogData = await getOgData()
-    const newTask: TaskItem = {
-      status: 'downloading',
-      from: url.value,
-      title: webview.value?.getTitle() || '',
-      name: task.name,
-      taskId: '',
-      createdAt: Date.now(),
+    const enrichedTask: TaskItem = {
       ...task,
-      og: ogData,
+      from: url.value,
+      title: webview.value?.getTitle() || task.title,
     }
-    const dowloadItem: Message4Renderer = {
+    const data = await sendMsgToMainProcess({
       name: MessageName.downloadM3u8,
-      data: newTask,
+      data: enrichedTask,
       type: 'download',
-    }
-    const data = await sendMsgToMainProcess(dowloadItem)
+    })
     console.log('[main]:', data)
     downloadDialogVisible.value = false
-    ElMessage({
-      type: 'success',
-      message: `Task created: ${task.name}`,
-    })
+    mediaListVisible.value = false
+    toast.success(`已创建任务：${task.name}`)
   }
   catch (error) {
     console.error('Download error:', error)
-    ElMessage.error('Failed to create task')
+    toast.error('创建任务失败')
     downloadDialogVisible.value = false
   }
 }
@@ -109,12 +74,8 @@ function download(row: MediaMessage) {
 
 function writeClipboard(row: MediaMessage) {
   const rowRaw = toRaw(row)
-  console.log('writeClipboard', row)
   navigator.clipboard.writeText(rowRaw.url)
-  ElMessage({
-    type: 'success',
-    message: 'Copy success',
-  })
+  toast.success('已复制链接')
 }
 
 function openDevTool() {
@@ -221,60 +182,129 @@ function urlChange(val: string | number) {
 </script>
 
 <template>
-  <div class="flex flex-col h-screen box-border pb-4">
-    <TopBar :url="url">
-      <div class="flex justify-between items-center">
-        <el-icon class="px-2" @click="goBack">
-          <ArrowLeft :class="{ 'text-gray-200': !canGoBack }" />
-        </el-icon>
-        <el-icon class="px-2" @click="goForward">
-          <ArrowRight :class="{ 'text-gray-200': !canGoForward }" />
-        </el-icon>
-        <el-icon class="px-2" @click="refreshPage">
-          <RefreshCw v-if="domReady" />
-          <X v-else />
-        </el-icon>
-        <el-input v-model="inputUrl" placeholder="Please input URL" @change="urlChange">
-          <template #prefix>
-            <el-icon class="el-input__icon">
-              <Search />
-            </el-icon>
-          </template>
-        </el-input>
-        <el-select v-model="url" placeholder="Select" style="width: 40px">
-          <el-option v-for="item in history" :key="item" :label="item" :value="item" style="width: 240px" />
-        </el-select>
+  <div class="flex flex-col h-screen overflow-hidden">
+    <!-- Navigation toolbar -->
+    <div class="flex items-center gap-1.5 px-2 py-1.5 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-950 shrink-0">
+      <button
+        type="button" title="后退" :disabled="!canGoBack"
+        class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 transition-colors text-gray-500 dark:text-gray-400"
+        @click="goBack"
+      >
+        <ArrowLeft :size="15" />
+      </button>
+      <button
+        type="button" title="前进" :disabled="!canGoForward"
+        class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 transition-colors text-gray-500 dark:text-gray-400"
+        @click="goForward"
+      >
+        <ArrowRight :size="15" />
+      </button>
+      <button
+        type="button" :title="domReady ? '刷新' : '停止加载'"
+        class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-500 dark:text-gray-400"
+        @click="refreshPage"
+      >
+        <RefreshCw v-if="domReady" :size="15" />
+        <X v-else :size="15" />
+      </button>
+      <div class="relative flex-1">
+        <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" :size="13" />
+        <input
+          v-model="inputUrl"
+          type="text"
+          placeholder="输入网址…"
+          class="w-full pl-8 pr-3 py-1.5 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400"
+          @keydown.enter="urlChange(inputUrl)"
+        >
       </div>
-      <el-button class="fixed bottom-0 right-0" @click="openDevTool">
-        open dev
-      </el-button>
-      <el-popover placement="right" :width="400" trigger="click">
-        <template #reference>
-          <div class="fixed bottom-0 left-0">
-            <el-badge :value="findedMediaStore.findedMediaList.length">
-              <el-button>finded m3u8</el-button>
-            </el-badge>
-          </div>
-        </template>
-        <el-table :data="findedMediaStore.findedMediaList" height="250">
-          <el-table-column type="index" width="50" />
-          <el-table-column width="70" property="type" label="type" />
-          <el-table-column :show-overflow-tooltip="true" class="truncate" width="300" property="url" label="url" />
-          <el-table-column fixed="right" label="Operations" width="150">
-            <template #default="scope">
-              <el-button link type="primary" size="small" @click.prevent="download(scope.row)">
-                download
-              </el-button>
-              <el-button link type="primary" size="small" @click.prevent="writeClipboard(scope.row)">
-                copy
-              </el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-      </el-popover>
-    </TopBar>
-    <DownloadDialog v-model="downloadDialogVisible" :task="selectedTask" @confirm="handleConfirm" />
+      <!-- History dropdown -->
+      <div class="relative">
+        <select
+          class="appearance-none px-2 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 dark:text-gray-300 max-w-28 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-400"
+          @change="(e) => urlChange((e.target as HTMLSelectElement).value)"
+        >
+          <option value="" disabled selected>
+            历史
+          </option>
+          <option v-for="item in [...history].reverse().slice(0, 30)" :key="item" :value="item" :title="item">
+            {{ item.length > 30 ? `${item.slice(0, 30)}…` : item }}
+            {{ item.length > 30 ? `${item.slice(0, 30)}…` : item }}
+          </option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Webview -->
     <webview ref="webview" :src="url" class="flex-1 w-full" allowpopups />
+
+    <!-- DevTools button -->
+    <button
+      type="button"
+      class="fixed bottom-4 right-4 px-3 py-1.5 text-xs rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors z-20"
+      @click="openDevTool"
+    >
+      DevTools
+    </button>
+
+    <!-- Found M3U8 badge -->
+    <button
+      type="button"
+      class="fixed bottom-4 left-4 z-20 flex items-center gap-2 px-3 py-2 rounded-xl bg-white dark:bg-gray-900 border shadow-lg text-sm transition-colors"
+      :class="findedMediaStore.findedMediaListCount > 0 ? 'border-blue-400 text-blue-500' : 'border-gray-200 dark:border-gray-700 text-gray-400'"
+      @click="mediaListVisible = !mediaListVisible"
+    >
+      <span
+        v-if="findedMediaStore.findedMediaListCount > 0"
+        class="w-4 h-4 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center font-bold leading-none"
+      >{{ findedMediaStore.findedMediaListCount }}</span>
+      <span>{{ findedMediaStore.findedMediaListCount > 0 ? `发现 ${findedMediaStore.findedMediaListCount} 个 M3U8` : '未发现 M3U8' }}</span>
+    </button>
+
+    <!-- Media list panel -->
+    <div
+      v-if="mediaListVisible"
+      class="fixed bottom-16 left-4 z-30 bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800 w-96 max-h-72 flex flex-col overflow-hidden"
+    >
+      <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800 shrink-0">
+        <span class="text-sm font-semibold text-gray-800 dark:text-gray-100">发现的 M3U8</span>
+        <button type="button" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200" @click="mediaListVisible = false">
+          <X :size="14" />
+        </button>
+      </div>
+      <div class="overflow-y-auto flex-1">
+        <div
+          v-for="(row, idx) in findedMediaStore.findedMediaList"
+          :key="row.url"
+          class="flex items-center gap-2 px-4 py-2.5 border-b border-gray-50 dark:border-gray-800/60 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800/50"
+        >
+          <span class="text-xs text-gray-400 w-5 shrink-0">{{ idx + 1 }}</span>
+          <span class="text-xs bg-gray-100 dark:bg-gray-800 text-gray-500 px-1.5 py-0.5 rounded shrink-0">{{ row.type }}</span>
+          <span class="text-xs truncate text-gray-600 dark:text-gray-300 flex-1 min-w-0" :title="row.url">{{ row.url }}</span>
+          <button
+            type="button"
+            class="shrink-0 px-2 py-1 text-xs text-blue-500 hover:text-blue-600 rounded transition-colors"
+            @click="download(row)"
+          >
+            下载
+          </button>
+          <button
+            type="button"
+            class="shrink-0 px-2 py-1 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded transition-colors"
+            @click="writeClipboard(row)"
+          >
+            复制
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <DownloadDialog
+      v-if="selectedTask"
+      v-model="downloadDialogVisible"
+      :task="{ browserVideoItem: selectedTask }"
+      :page-title="webview?.getTitle() || ''"
+      @confirm="handleConfirm"
+    />
   </div>
 </template>
 

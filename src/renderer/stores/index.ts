@@ -58,17 +58,14 @@ export const useTaskStore = defineStore('tasks', () => {
   function getTasks() {
     return tasks.value
   }
-  async function loadTasks() {
-    const response = await window.electron.sendMsg({
+  function loadTasks() {
+    // 主进程 getTasks 通过 reply-msg 推送数据，App.vue 的 onReplyMsg 负责更新 tasks
+    // 这里只需触发 IPC 消息即可，不需要等待返回值
+    return window.electron.sendMsg({
       name: MessageName.getTasks,
       data: null,
       type: 'getTasks',
     })
-
-    if (response?.data?.tasks)
-      tasks.value = response.data.tasks
-
-    return tasks.value
   }
   function switchTab(tab: TabName) {
     activeTab.value = tab

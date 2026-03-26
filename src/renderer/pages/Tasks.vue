@@ -1,24 +1,24 @@
 <script setup lang="ts">
 import { ref, toRaw } from 'vue'
-import { ElMessage, ElMessageBox, ElTable } from 'element-plus'
 import { AlertCircle, Check, FolderClosed, Link, Pause, Play, RefreshCw, Search, Trash, Youtube } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
 import type { Message4Renderer, TaskItem } from '../common.types'
 import { MessageName, TabList } from '../common.types'
 import { useTaskStore } from '../stores'
-import { debounce } from '../util/util'
+import { toast } from '../composables/toast'
 
 const router = useRouter()
-// const route = useRoute()
 const { sendMsg: sendMsgToMainProcess } = window.electron
 const taskStore = useTaskStore()
 const multipleSelection = ref<TaskItem[]>([])
 const search = ref('')
 const activeStatus = ref<'all' | TaskItem['status']>('all')
-const tableRef = ref<null | InstanceType<typeof ElTable>>(null)
-const scrollTop = ref(0)
 const migrating = ref(false)
 const loadingTasks = ref(false)
+
+// ── inline modals ─────────────────────────────────
+const confirmState = ref<{ visible: boolean, task: TaskItem | null }>({ visible: false, task: null })
+const promptState = ref<{ visible: boolean, task: TaskItem | null, url: string }>({ visible: false, task: null, url: '' })
 
 const taskSummaryCards = computed(() => [
   {
@@ -56,40 +56,15 @@ const selectedTaskIds = computed(() => new Set(multipleSelection.value.map(item 
 const filteredTasksByStatus = computed(() => {
   if (activeStatus.value === 'all')
     return taskStore.tasks
-
   if (activeStatus.value === 'failed')
     return taskStore.tasks.filter(task => ['failed', 'paused', 'unfinished'].includes(task.status))
-
   if (activeStatus.value === 'downloaded')
     return taskStore.tasks.filter(task => ['downloaded', 'success'].includes(task.status))
-
   if (activeStatus.value === 'downloading')
     return taskStore.tasks.filter(task => ['downloading', 'waiting'].includes(task.status))
-
   return taskStore.tasks.filter(task => task.status === activeStatus.value)
 })
 
-onMounted(() => {
-  if (tableRef.value) {
-    // console.log('table', tableRef.value)
-    // console.log(tableRef.value.scrollBarRef.wrapRef)
-    const scrollElement = tableRef.value.scrollBarRef.wrapRef as HTMLElement
-    scrollElement.onscroll = debounce((event: Event) => {
-      const target = event.target as HTMLElement
-      console.log(target.scrollTop)
-      scrollTop.value = target.scrollTop || 0
-    })
-  }
-  // table.value.
-})
-onActivated(() => {
-  console.log('activated')
-  if (tableRef.value) {
-    // console.log('table', tableRef.value)
-    // console.log(tableRef.value.scrollBarRef.wrapRef)
-    tableRef.value.setScrollTop(scrollTop.value)
-  }
-})
 const filterTableData = computed(() =>
   filteredTasksByStatus.value.filter(
     (data) => {
@@ -107,18 +82,16 @@ const filterTableData = computed(() =>
 
 const hasFilters = computed(() => search.value.trim().length > 0 || activeStatus.value !== 'all')
 
-function getStatusType(status: TaskItem['status']) {
+function getStatusColor(status: TaskItem['status']) {
   if (status === 'downloaded' || status === 'success')
-    return 'success'
+    return 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400'
   if (status === 'failed')
-    return 'danger'
+    return 'bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400'
   if (status === 'paused' || status === 'unfinished')
-    return 'warning'
-  return 'info'
-}
-
-function formatTaskCount(count: number) {
-  return `${count} 项`
+    return 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400'
+  if (status === 'downloading')
+    return 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-500'
+  return 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
 }
 
 function setStatusFilter(status: 'all' | TaskItem['status']) {
@@ -134,65 +107,47 @@ async function refreshTasks() {
   try {
     loadingTasks.value = true
     await taskStore.loadTasks()
-    ElMessage.success('任务列表已刷新')
+    toast.success('任务列表已刷新')
   }
   catch (error) {
-    ElMessage.error(`刷新失败: ${(error as Error).message}`)
+    toast.error(`刷新失败: ${(error as Error).message}`)
   }
   finally {
     loadingTasks.value = false
   }
 }
 
-function rowClassName({ row }: { row: TaskItem }) {
-  return selectedTaskIds.value.has(row.taskId) ? 'task-row-selected' : ''
+function toggleSelect(task: TaskItem) {
+  const idx = multipleSelection.value.findIndex(t => t.taskId === task.taskId)
+  if (idx === -1)
+    multipleSelection.value.push(task)
+  else
+    multipleSelection.value.splice(idx, 1)
 }
 
-function handleSelectionChange(val: TaskItem[]) {
-  multipleSelection.value = val
-  console.log('multipleSelection', val)
+function toggleSelectAll() {
+  if (multipleSelection.value.length === filterTableData.value.length)
+    multipleSelection.value = []
+  else
+    multipleSelection.value = [...filterTableData.value]
 }
 
 function deleteItem(task: TaskItem) {
-  console.log('handleClick', multipleSelection.value)
-  console.log('handleClick', toRaw(task))
+  confirmState.value = { visible: true, task }
+}
 
-  const num = taskStore.tasks.findIndex(item => item.taskId === task.taskId)
-  ElMessageBox.confirm(
-    'Are you sure to delete this task and files?',
-    'Warning',
-    {
-      confirmButtonText: 'OK',
-      cancelButtonText: 'Cancel',
-      type: 'warning',
-    },
-  )
-    .then(() => {
-      const newMessage: Message4Renderer = {
-        name: MessageName.deleteTask,
-        data: num,
-        type: 'deteteTask',
-      }
-      sendMsgToMainProcess(newMessage)
-    })
-    .catch(() => {
-      console.log('cancel the ELMessageBox')
-      // catch error
-    })
+function doDelete() {
+  if (!confirmState.value.task)
+    return
+  const num = taskStore.tasks.findIndex(item => item.taskId === confirmState.value.task!.taskId)
+  sendMsgToMainProcess({ name: MessageName.deleteTask, data: num, type: 'deteteTask' })
+  confirmState.value = { visible: false, task: null }
 }
 
 function openDir(task: TaskItem) {
-  console.log('handleClick', toRaw(task))
-
-  const newMessage: Message4Renderer = {
-    name: MessageName.openDir,
-    data: task.directory,
-    type: 'openDir',
-  }
-  sendMsgToMainProcess(newMessage)
+  sendMsgToMainProcess({ name: MessageName.openDir, data: task.directory, type: 'openDir' })
 }
 function playTask(task: TaskItem) {
-  console.log('handleClick', toRaw(task))
   // eslint-disable-next-line ts/ban-ts-comment
   // @ts-expect-error
   const splitSymbol = window.navigator?.userAgentData.platform === 'Windows' ? '\\' : '/'
@@ -201,12 +156,10 @@ function playTask(task: TaskItem) {
   taskStore.playUrl = `${taskStore.urlPrefix + task.directory?.split(splitSymbol).pop()}/${fileName}`
   taskStore.playerTitle = task.title || 'player'
   taskStore.switchTab(TabList.Home)
-  router.push({ path: '/home', query: { from: 'tasks' } })
+  router.push({ path: '/', query: { from: 'tasks' } })
 }
 
 function openLink(task: TaskItem) {
-  console.log('handleClick', toRaw(task))
-
   if (task.from) {
     navigator.clipboard.writeText(task.from)
     taskStore.task2webviewUrl = task.from
@@ -215,39 +168,20 @@ function openLink(task: TaskItem) {
   }
 }
 function restart(task: TaskItem) {
-  console.log('handleClick', toRaw(task))
-  ElMessageBox.prompt('Please input new m3u8 url', 'Tip', {
-    confirmButtonText: 'OK',
-    cancelButtonText: 'Cancel',
-    inputPattern:
-      /https?:\/\/\S+/,
-    inputErrorMessage: 'Invalid Url',
-  })
-    .then(({ value }) => {
-      ElMessage({
-        type: 'success',
-        message: `Your m3u8 is:${value}`,
-      })
-      const newTask = {
-        ...toRaw(task),
-        url: value,
-      }
-      const newMessage: Message4Renderer = {
-        name: MessageName.downloadM3u8,
-        data: newTask,
-        type: 'download',
-      }
-      sendMsgToMainProcess(newMessage)
-    })
-    .catch(() => {
-      ElMessage({
-        type: 'info',
-        message: 'Input canceled',
-      })
-    })
+  promptState.value = { visible: true, task, url: task.url }
+}
+
+function doRestart() {
+  if (!promptState.value.task || !promptState.value.url.trim()) {
+    toast.warning('请输入有效的 m3u8 地址')
+    return
+  }
+  const newTask = { ...toRaw(promptState.value.task), url: promptState.value.url.trim() }
+  sendMsgToMainProcess({ name: MessageName.downloadM3u8, data: newTask, type: 'download' })
+  promptState.value = { visible: false, task: null, url: '' }
+  toast.success('已重新开始下载')
 }
 function pauseTask(task: TaskItem) {
-  console.log('handleClick', toRaw(task))
   const newTask = {
     ...toRaw(task),
     status: 'paused',
@@ -260,7 +194,6 @@ function pauseTask(task: TaskItem) {
   sendMsgToMainProcess(newMessage)
 }
 function resumeTask(task: TaskItem) {
-  console.log('handleClick', toRaw(task))
   const newTask = {
     ...toRaw(task),
     status: 'downloading',
@@ -276,34 +209,22 @@ function resumeTask(task: TaskItem) {
 async function handleMigrate() {
   try {
     migrating.value = true
-    const result = await window.electron.ipcRenderer.invoke('msg', {
+    const result = await window.ipcRenderer.invoke('msg', {
       name: MessageName.migrateTasks,
       data: null,
     })
 
     if (result.success) {
-      ElMessage({
-        type: 'success',
-        message: result.message || 'Migration completed',
-        duration: 5000,
-      })
+      toast.success(result.message || '迁移完成', 5000)
       // Refresh task list
       await taskStore.loadTasks()
     }
     else {
-      ElMessage({
-        type: 'error',
-        message: result.message || 'Migration failed',
-        duration: 5000,
-      })
+      toast.error(result.message || '迁移失败', 5000)
     }
   }
   catch (error) {
-    ElMessage({
-      type: 'error',
-      message: `Migration error: ${(error as Error).message}`,
-      duration: 5000,
-    })
+    toast.error(`迁移出错: ${(error as Error).message}`, 5000)
   }
   finally {
     migrating.value = false
@@ -312,340 +233,294 @@ async function handleMigrate() {
 </script>
 
 <template>
-  <div class="task-page">
-    <section class="task-overview">
+  <div class="flex flex-col gap-4 h-full p-4 overflow-hidden box-border">
+    <!-- Overview cards -->
+    <section class="grid grid-cols-4 gap-3 shrink-0">
       <button
         v-for="card in taskSummaryCards"
         :key="card.key"
         type="button"
-        class="overview-card"
-        :class="[`overview-card--${card.tone}`, { 'overview-card--active': activeStatus === card.key }]"
+        class="rounded-2xl border p-4 text-left transition-all cursor-pointer hover:-translate-y-0.5 hover:shadow-lg"
+        :class="[
+          activeStatus === card.key
+            ? 'border-blue-400 shadow-md shadow-blue-500/10'
+            : 'border-gray-200 dark:border-gray-800',
+          card.tone === 'primary' ? 'bg-gradient-to-br from-blue-50/60 dark:from-blue-950/30' : '',
+          card.tone === 'warning' ? 'bg-gradient-to-br from-amber-50/60 dark:from-amber-950/30' : '',
+          card.tone === 'success' ? 'bg-gradient-to-br from-green-50/60 dark:from-green-950/30' : '',
+          card.tone === 'danger' ? 'bg-gradient-to-br from-red-50/60 dark:from-red-950/30' : '',
+        ]"
         @click="setStatusFilter(card.key as 'all' | TaskItem['status'])"
       >
-        <div class="overview-card__header">
+        <div class="flex items-center justify-between mb-3 text-xs text-gray-500 dark:text-gray-400">
           <span>{{ card.label }}</span>
-          <el-tag size="small" :type="card.tone === 'danger' ? 'danger' : card.tone === 'success' ? 'success' : card.tone === 'warning' ? 'warning' : 'primary'">
-            {{ formatTaskCount(card.value) }}
-          </el-tag>
+          <span class="px-1.5 py-0.5 rounded-md bg-gray-100 dark:bg-gray-800 font-mono">{{ card.value }}</span>
         </div>
-        <strong class="overview-card__value">{{ card.value }}</strong>
-        <span class="overview-card__desc">{{ card.description }}</span>
+        <div class="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-1">
+          {{ card.value }}
+        </div>
+        <div class="text-xs text-gray-400">
+          {{ card.description }}
+        </div>
       </button>
     </section>
 
-    <section class="task-toolbar">
-      <div class="toolbar-main">
-        <el-input v-model="search" size="large" placeholder="搜索标题、名称或来源地址" clearable class="toolbar-search">
-          <template #prefix>
-            <el-icon>
-              <Search />
-            </el-icon>
-          </template>
-        </el-input>
-        <el-button plain :disabled="!hasFilters" @click="clearFilters">
+    <!-- Toolbar -->
+    <div class="flex items-center justify-between gap-3 shrink-0 flex-wrap">
+      <div class="flex items-center gap-2 flex-wrap">
+        <div class="relative">
+          <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" :size="14" />
+          <input
+            v-model="search"
+            type="text"
+            placeholder="搜索标题、名称或来源地址"
+            class="pl-8 pr-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400 w-72"
+          >
+        </div>
+        <button
+          type="button"
+          :disabled="!hasFilters"
+          class="px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 transition-colors dark:text-gray-300"
+          @click="clearFilters"
+        >
           清空筛选
-        </el-button>
-        <el-button :loading="loadingTasks" @click="refreshTasks">
+        </button>
+        <button
+          type="button"
+          :disabled="loadingTasks"
+          class="px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 transition-colors dark:text-gray-300 flex items-center gap-1.5"
+          @click="refreshTasks"
+        >
+          <RefreshCw :class="loadingTasks ? 'animate-spin' : ''" :size="13" />
           刷新列表
-        </el-button>
-        <el-button
-          type="primary"
-          :loading="migrating"
+        </button>
+        <button
+          type="button"
+          :disabled="migrating"
+          class="px-3 py-2 text-sm rounded-xl bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-40 transition-colors flex items-center gap-1.5"
           @click="handleMigrate"
         >
+          <RefreshCw v-if="migrating" class="animate-spin" :size="13" />
           迁移历史任务
-        </el-button>
+        </button>
       </div>
-      <div class="toolbar-meta">
-        <el-text type="info">
-          当前显示 {{ filterTableData.length }} / {{ taskStore.tasksCount }} 项
-        </el-text>
-        <el-text v-if="multipleSelection.length" type="primary">
-          已选 {{ multipleSelection.length }} 项
-        </el-text>
+      <div class="flex items-center gap-3 text-xs text-gray-400">
+        <span>显示 {{ filterTableData.length }} / {{ taskStore.tasksCount }} 项</span>
+        <span v-if="multipleSelection.length" class="text-blue-500">已选 {{ multipleSelection.length }} 项</span>
       </div>
-    </section>
+    </div>
 
-    <el-empty
+    <!-- Empty state -->
+    <div
       v-if="!filterTableData.length"
-      :image-size="120"
-      description="还没有匹配的下载任务"
-      class="task-empty"
+      class="flex-1 flex flex-col items-center justify-center gap-4 border border-dashed border-gray-200 dark:border-gray-700 rounded-2xl"
     >
-      <template #description>
-        <div class="task-empty__content">
-          <strong>{{ taskStore.tasksCount ? '当前筛选条件下暂无结果' : '还没有任何下载任务' }}</strong>
-          <span>{{ taskStore.tasksCount ? '可以尝试切换状态、清空搜索词后再查看。' : '去 Explore 页面抓取 m3u8，或从历史任务执行迁移。' }}</span>
+      <div class="text-4xl">
+        📭
+      </div>
+      <div class="text-center">
+        <div class="font-semibold text-gray-700 dark:text-gray-300 mb-1">
+          {{ taskStore.tasksCount ? '当前筛选条件下暂无结果' : '还没有任何下载任务' }}
         </div>
-      </template>
-      <el-button type="primary" @click="router.push('/webview')">
+        <div class="text-sm text-gray-400">
+          {{ taskStore.tasksCount ? '可以尝试切换状态、清空搜索词后再查看。' : '去 Explore 页面抓取 m3u8，或从历史任务执行迁移。' }}
+        </div>
+      </div>
+      <button
+        type="button"
+        class="px-4 py-2 text-sm bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-colors"
+        @click="router.push('/webview')"
+      >
         前往 Explore
-      </el-button>
-    </el-empty>
+      </button>
+    </div>
 
-    <ElTable
-      v-else
-      ref="tableRef"
-      :data="filterTableData"
-      max-height="calc(100vh - 240px)"
-      :row-class-name="rowClassName"
-      @selection-change="handleSelectionChange"
+    <!-- Task list table -->
+    <div v-else class="flex-1 overflow-y-auto min-h-0 rounded-2xl border border-gray-100 dark:border-gray-800">
+      <!-- Header -->
+      <div class="sticky top-0 grid grid-cols-[32px_90px_100px_1fr_170px] gap-2 px-3 py-2.5 bg-gray-50 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 text-xs text-gray-400 font-medium z-10">
+        <div class="flex items-center justify-center">
+          <input
+            type="checkbox"
+            class="rounded cursor-pointer"
+            :checked="multipleSelection.length === filterTableData.length && filterTableData.length > 0"
+            @change="toggleSelectAll"
+          >
+        </div>
+        <div>进度</div>
+        <div>状态</div>
+        <div>标题</div>
+        <div>操作</div>
+      </div>
+
+      <!-- Rows -->
+      <div
+        v-for="task in filterTableData"
+        :key="task.taskId"
+        class="grid grid-cols-[32px_90px_100px_1fr_170px] gap-2 px-3 py-3 border-b border-gray-50 dark:border-gray-800/60 hover:bg-gray-50/70 dark:hover:bg-gray-900/60 transition-colors items-center"
+        :class="selectedTaskIds.has(task.taskId) ? 'bg-blue-50/40 dark:bg-blue-950/20' : ''"
+      >
+        <div class="flex items-center justify-center">
+          <input
+            type="checkbox"
+            class="rounded cursor-pointer"
+            :checked="selectedTaskIds.has(task.taskId)"
+            @change="toggleSelect(task)"
+          >
+        </div>
+        <!-- Progress -->
+        <div class="flex flex-col gap-0.5 min-w-0">
+          <span class="text-xs text-gray-500 dark:text-gray-400">{{ task.durationStr || '—' }}</span>
+          <div v-if="task.progress && task.progress.includes('%')" class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1 my-0.5">
+            <div class="h-1 rounded-full bg-blue-500 transition-all" :style="{ width: task.progress }" />
+          </div>
+          <span class="text-xs text-gray-400">{{ task.progress || '等待中' }}</span>
+        </div>
+        <!-- Status -->
+        <div>
+          <span
+            class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
+            :class="getStatusColor(task.status)"
+          >{{ task.status }}</span>
+        </div>
+        <!-- Title -->
+        <div class="flex flex-col min-w-0 overflow-hidden">
+          <span class="text-sm truncate text-gray-800 dark:text-gray-200" :title="task.title || task.name">
+            {{ task.title || task.name || '未命名任务' }}
+          </span>
+          <span class="text-xs truncate text-gray-400" :title="task.from || task.url">
+            {{ task.from || task.url }}
+          </span>
+        </div>
+        <!-- Actions -->
+        <div class="flex items-center gap-0.5 flex-wrap">
+          <button
+            v-if="['paused', 'unfinished', 'failed'].includes(task.status)"
+            type="button" title="恢复下载"
+            class="p-1.5 rounded-lg text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors"
+            @click="resumeTask(task)"
+          >
+            <Play :size="14" />
+          </button>
+          <button
+            v-if="task.status === 'downloading'"
+            type="button" title="暂停任务"
+            class="p-1.5 rounded-lg text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-colors"
+            @click="pauseTask(task)"
+          >
+            <Pause :size="14" />
+          </button>
+          <span
+            v-if="task.status === 'downloaded'"
+            title="已完成"
+            class="p-1.5 text-green-500"
+          ><Check :size="14" /></span>
+          <button
+            type="button" title="删除任务"
+            class="p-1.5 rounded-lg text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+            @click="deleteItem(task)"
+          >
+            <Trash :size="14" />
+          </button>
+          <button
+            type="button" title="打开目录"
+            class="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            @click="openDir(task)"
+          >
+            <FolderClosed :size="14" />
+          </button>
+          <button
+            type="button" title="播放"
+            class="p-1.5 rounded-lg text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors"
+            @click="playTask(task)"
+          >
+            <Youtube :size="14" />
+          </button>
+          <button
+            type="button" title="回到来源页"
+            class="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            @click="openLink(task)"
+          >
+            <Link :size="14" />
+          </button>
+          <button
+            type="button" title="重新下载"
+            class="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            @click="restart(task)"
+          >
+            <RefreshCw :size="14" />
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Failed tip -->
+    <div
+      v-if="activeStatus === 'failed' && filterTableData.length"
+      class="shrink-0 inline-flex items-center gap-2 px-3 py-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 text-sm"
     >
-      <el-table-column type="selection" width="48" />
-      <el-table-column label="Progress" width="100">
-        <template #default="scope">
-          <div class="flex flex-col justify-center gap-1">
-            <el-text class="mx-1">
-              {{ scope.row.durationStr }}
-            </el-text>
-            <el-progress
-              v-if="scope.row.progress && scope.row.progress.includes('%')"
-              :stroke-width="6"
-              :percentage="Number.parseFloat(scope.row.progress) || 0"
-              :show-text="false"
-            />
-            <el-text class="mx-1" size="small" type="info">
-              {{ scope.row.progress || '等待中' }}
-            </el-text>
-          </div>
-        </template>
-      </el-table-column>
-      <el-table-column property="status" label="Status" width="100">
-        <template #default="scope">
-          <el-tag :type="getStatusType(scope.row.status)">
-            {{ scope.row.status }}
-          </el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column property="title" label="Title" width="400" class="truncate">
-        <template #default="scope">
-          <div class="task-title-cell">
-            <el-text class="truncate task-title" :title="scope.row.title || scope.row.name">
-              {{ scope.row.title || scope.row.name || '未命名任务' }}
-            </el-text>
-            <el-text class="task-subtitle" size="small" type="info" :title="scope.row.from || scope.row.url">
-              {{ scope.row.from || scope.row.url }}
-            </el-text>
-          </div>
-        </template>
-      </el-table-column>
-      <el-table-column fixed="right" label="Operations" min-width="180">
-        <template #default="scope">
-          <div class="flex justify-start items-center flex-wrap gap-1">
-            <div class="m-r-3">
-              <el-tooltip content="恢复下载" placement="top">
-                <el-button
-                  v-if="['paused', 'unfinished', 'failed'].includes(scope.row.status)" link type="primary"
-                  size="small" @click="resumeTask(scope.row)"
-                >
-                  <Play title="start" />
-                </el-button>
-              </el-tooltip>
-              <el-tooltip content="暂停任务" placement="top">
-                <el-button
-                  v-if="scope.row.status === 'downloading'" link type="primary" size="small"
-                  title="pause" @click="pauseTask(scope.row)"
-                >
-                  <Pause title="pause" />
-                </el-button>
-              </el-tooltip>
-              <el-tooltip content="已完成" placement="top">
-                <el-button v-if="scope.row.status === 'downloaded'" link type="success" size="small">
-                  <Check title="ok" />
-                </el-button>
-              </el-tooltip>
-              <el-tooltip content="删除任务" placement="top">
-                <el-button link type="danger" size="small" title="delete" @click="deleteItem(scope.row)">
-                  <Trash title="delete" />
-                </el-button>
-              </el-tooltip>
-              <el-tooltip content="打开目录" placement="top">
-                <el-button link type="primary" size="small" title="open fold" @click="openDir(scope.row)">
-                  <FolderClosed title="open dir" />
-                </el-button>
-              </el-tooltip>
-            </div>
-            <div class="flex items-center gap-1">
-              <el-tooltip content="播放" placement="top">
-                <el-button link type="primary" size="small" title="play" @click="playTask(scope.row)">
-                  <Youtube title="play" />
-                </el-button>
-              </el-tooltip>
-              <el-tooltip content="回到来源页" placement="top">
-                <el-button link type="primary" size="small" title="link" @click="openLink(scope.row)">
-                  <Link title="link" />
-                </el-button>
-              </el-tooltip>
-              <el-tooltip content="重新下载" placement="top">
-                <el-button link type="primary" size="small" title="restart" @click="restart(scope.row)">
-                  <RefreshCw title="restart" />
-                </el-button>
-              </el-tooltip>
-            </div>
-          </div>
-        </template>
-      </el-table-column>
-    </ElTable>
-
-    <div v-if="activeStatus === 'failed' && filterTableData.length" class="task-tip">
-      <AlertCircle :size="16" />
+      <AlertCircle :size="14" />
       <span>建议优先处理失败或暂停任务，避免分片与原始链接失效。</span>
+    </div>
+
+    <!-- Delete confirm modal -->
+    <div
+      v-if="confirmState.visible"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      @click.self="confirmState.visible = false"
+    >
+      <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-6">
+        <h3 class="text-base font-semibold mb-2 text-gray-800 dark:text-gray-100">
+          确认删除
+        </h3>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">
+          确定要删除任务 <strong>{{ confirmState.task?.name || confirmState.task?.title }}</strong> 及其文件吗？
+        </p>
+        <div class="flex justify-end gap-3">
+          <button type="button" class="px-4 py-2 rounded-xl text-sm border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors" @click="confirmState.visible = false">
+            取消
+          </button>
+          <button type="button" class="px-4 py-2 rounded-xl text-sm bg-red-500 text-white hover:bg-red-600 transition-colors" @click="doDelete">
+            确认删除
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Restart URL prompt modal -->
+    <div
+      v-if="promptState.visible"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      @click.self="promptState.visible = false"
+    >
+      <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6">
+        <h3 class="text-base font-semibold mb-2 text-gray-800 dark:text-gray-100">
+          重新下载
+        </h3>
+        <p class="text-sm text-gray-400 mb-3">
+          输入新的 m3u8 地址：
+        </p>
+        <input
+          v-model="promptState.url"
+          type="text"
+          placeholder="https://..."
+          class="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400 mb-6"
+          @keydown.enter="doRestart"
+        >
+        <div class="flex justify-end gap-3">
+          <button type="button" class="px-4 py-2 rounded-xl text-sm border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors" @click="promptState.visible = false">
+            取消
+          </button>
+          <button type="button" class="px-4 py-2 rounded-xl text-sm bg-blue-500 text-white hover:bg-blue-600 transition-colors" @click="doRestart">
+            确认
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.task-page {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  height: 100%;
-  padding: 16px;
-  box-sizing: border-box;
-}
-
-.task-overview {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.overview-card {
-  border: 1px solid var(--el-border-color-light);
-  border-radius: 16px;
-  background: var(--el-bg-color-overlay);
-  padding: 16px;
-  text-align: left;
-  transition: all 0.2s ease;
-  cursor: pointer;
-}
-
-.overview-card:hover,
-.overview-card--active {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 24px rgb(15 23 42 / 8%);
-  border-color: var(--el-color-primary-light-5);
-}
-
-.overview-card--primary {
-  background: linear-gradient(135deg, rgb(64 158 255 / 10%), transparent 70%);
-}
-
-.overview-card--warning {
-  background: linear-gradient(135deg, rgb(230 162 60 / 10%), transparent 70%);
-}
-
-.overview-card--success {
-  background: linear-gradient(135deg, rgb(103 194 58 / 10%), transparent 70%);
-}
-
-.overview-card--danger {
-  background: linear-gradient(135deg, rgb(245 108 108 / 10%), transparent 70%);
-}
-
-.overview-card__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  color: var(--el-text-color-secondary);
-}
-
-.overview-card__value {
-  display: block;
-  margin: 14px 0 6px;
-  font-size: 28px;
-  line-height: 1;
-}
-
-.overview-card__desc {
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
-}
-
-.task-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.toolbar-main {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.toolbar-search {
-  width: min(420px, 60vw);
-}
-
-.toolbar-meta {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.task-empty {
-  flex: 1;
-  border: 1px dashed var(--el-border-color);
-  border-radius: 18px;
-  background: var(--el-fill-color-blank);
-}
-
-.task-empty__content {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.task-title-cell {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.task-title {
-  justify-content: flex-start;
-}
-
-.task-subtitle {
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.task-tip {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  align-self: flex-start;
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: rgb(230 162 60 / 10%);
-  color: var(--el-color-warning-dark-2);
-}
-
-:deep(.task-row-selected) {
-  --el-table-tr-bg-color: color-mix(in srgb, var(--el-color-primary) 8%, transparent);
-}
-
-@media (max-width: 1200px) {
-  .task-overview {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 768px) {
-  .task-overview {
-    grid-template-columns: 1fr;
-  }
-
-  .toolbar-search {
-    width: 100%;
-  }
-}
+@media (max-width: 1200px) { section { grid-template-columns: repeat(2, 1fr) !important; } }
+@media (max-width: 768px) { section { grid-template-columns: 1fr !important; } }
 </style>
