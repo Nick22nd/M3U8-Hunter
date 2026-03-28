@@ -92,3 +92,6 @@ coverage/
 docs/node_modules
 docs/.vitepress
 fromCC/
+
+.gemini/
+gha-creds-*.json
