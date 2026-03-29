@@ -168,7 +168,7 @@ onMounted(() => {
 
   webview.value?.addEventListener('dom-ready', () => {
     console.log('dom-ready')
-    webview.value?.openDevTools()
+    // webview.value?.openDevTools()
     webview.value?.insertCSS(`
       @font-face {
         font-family: system;

@@ -139,8 +139,7 @@ function deleteItem(task: TaskItem) {
 function doDelete() {
   if (!confirmState.value.task)
     return
-  const num = taskStore.tasks.findIndex(item => item.taskId === confirmState.value.task!.taskId)
-  sendMsgToMainProcess({ name: MessageName.deleteTask, data: num, type: 'deteteTask' })
+  sendMsgToMainProcess({ name: MessageName.deleteTask, data: confirmState.value.task.taskId, type: 'deteteTask' })
   confirmState.value = { visible: false, task: null }
 }
 
@@ -177,10 +176,14 @@ function doRestart() {
     toast.warning('请输入有效的 m3u8 地址')
     return
   }
-  const newTask = { ...toRaw(promptState.value.task), url: promptState.value.url.trim() }
+  const newTask = {
+    ...toRaw(promptState.value.task),
+    url: promptState.value.url.trim(),
+    status: 'waiting' as const,
+  }
   sendMsgToMainProcess({ name: MessageName.downloadM3u8, data: newTask, type: 'download' })
   promptState.value = { visible: false, task: null, url: '' }
-  toast.success('已重新开始下载')
+  toast.success('已更新 m3u8 地址并继续未完成任务')
 }
 function pauseTask(task: TaskItem) {
   const newTask = {

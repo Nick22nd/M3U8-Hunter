@@ -136,7 +136,7 @@ const handlers = {
     serviceHub.m3u8Service.downloadM3u8(data)
     // }
   },
-  [MessageName.deleteTask]: async (data: number) => {
+  [MessageName.deleteTask]: async (data: string | number) => {
     console.log('deleteTask', data)
     await serviceHub.m3u8Service.deleteTask(data)
     const taskList = await serviceHub.m3u8Service.getTasks()

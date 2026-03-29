@@ -3,6 +3,7 @@ import { JSONFilePreset } from 'lowdb/node'
 import Logger from 'electron-log'
 import type { TaskItem } from '../common.types'
 import { getAppDataDir } from './utils'
+import { repairPersistedTasks } from './task-normalizer'
 
 interface Data {
   tasks: TaskItem[]
@@ -13,8 +14,10 @@ const defaultData: Data = { tasks: [] }
 // export const db = await JSONFilePreset<Data>('db.json', defaultData)
 class JSONDB {
   db = null
+  private initPromise: Promise<void>
+
   constructor() {
-    this.init()
+    this.initPromise = this.init()
   }
 
   async init() {
@@ -29,33 +32,28 @@ class JSONDB {
     }
   }
 
-  public async removeDuplicate() {
-    const tasks = this.db.data.tasks
-    const newTasks = tasks.filter((item, index) => {
-      const _index = tasks.findIndex(i => i.url === item.url)
-      return _index === index
-    })
-    this.db.data.tasks = newTasks
-    await this.db.write()
+  private async ensureReady() {
+    await this.initPromise
+    if (!this.db)
+      throw new Error('JSON database is not initialized')
   }
 
-  public async checkStatus() {
-    const tasks = this.db.data.tasks as TaskItem[]
-    const newTasks = tasks.map((item) => {
-      if (item.segmentCount === item.downloadedCount && item.status !== 'downloaded')
-        return { ...item, status: 'downloaded' }
-      // else if (item.segmentCount > item.downloadedCount && item.status !== 'downloading')
-      //   return { ...item, status: 'unfinished' }
+  private async repairTasks() {
+    await this.ensureReady()
+    const currentTasks = this.db.data.tasks as Partial<TaskItem>[]
+    const { tasks, changed } = repairPersistedTasks(currentTasks)
 
-      return item
-    })
-    this.db.data.tasks = newTasks
-    await this.db.write()
+    if (changed) {
+      this.db.data.tasks = tasks
+      await this.db.write()
+      Logger.info(`[JSONDB] Repaired persisted task data: ${tasks.length} tasks`) 
+    }
   }
 
   public async update(task: TaskItem) {
     // console.log('update', task)
     try {
+      await this.ensureReady()
       const isExist = this.db.data.tasks.some(item => item.taskId === task.taskId)
       if (isExist)
         this.db.data.tasks = this.db.data.tasks.map(item => item.taskId === task.taskId ? task : item)
@@ -70,8 +68,7 @@ class JSONDB {
   }
 
   public async getDB() {
-    this.removeDuplicate()
-    this.checkStatus()
+    await this.repairTasks()
     return this.db.data
   }
 }

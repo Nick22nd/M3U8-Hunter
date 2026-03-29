@@ -26,7 +26,7 @@ export class M3u8Service extends EventEmitter {
   storagePath: any
   dialogService: DialogService
   m3u8Tasks: Map<string, TaskManager> = new Map()
-  aria2Gids: Map<string, string[]> = new Map() // Track aria2 GIDs for each task
+  aria2Gids: Map<string, string[]> = new Map() // Track aria2 GIDs for each taskId
 
   constructor(dialogService: DialogService) {
     super()
@@ -45,9 +45,39 @@ export class M3u8Service extends EventEmitter {
 
   public async getTasks() {
     // jsondb.init()
-    const data = await jsondb.getDB() as TaskItem[]
+    const data = await jsondb.getDB()
     // console.log('data', data)
-    return data
+    return data.tasks as TaskItem[]
+  }
+
+  private async getTaskById(taskId?: string): Promise<TaskItem | undefined> {
+    if (!taskId)
+      return undefined
+
+    const data = await jsondb.getDB()
+    return (data.tasks as TaskItem[]).find(task => task.taskId === taskId)
+  }
+
+  private async resetTaskRuntimeState(taskId: string): Promise<void> {
+    const taskManager = this.m3u8Tasks.get(taskId)
+    if (taskManager) {
+      taskManager.pause()
+      this.m3u8Tasks.delete(taskId)
+    }
+
+    const gids = this.aria2Gids.get(taskId)
+    if (gids && aria2Service?.isRunning()) {
+      for (const gid of gids) {
+        try {
+          await aria2Service.remove(gid)
+        }
+        catch (error) {
+          Logger.error('[M3u8Service] Failed to cleanup aria2 download:', error)
+        }
+      }
+    }
+
+    this.aria2Gids.delete(taskId)
   }
 
   private normalizeTags(tags?: string[]) {
@@ -233,7 +263,7 @@ export class M3u8Service extends EventEmitter {
     }
 
     // Store GIDs for this task (for pause/resume)
-    this.aria2Gids.set(task.url, gids)
+    this.aria2Gids.set(task.taskId, gids)
 
     // Monitor downloads
     await this.monitorAria2Downloads(task, gids, segmentCount, downloadedCount)
@@ -310,27 +340,43 @@ export class M3u8Service extends EventEmitter {
 
   // download m3u8
   public async downloadM3u8(videoItem: TaskItem, targetPath = this.storagePath) {
-    const m3u8Url = videoItem.url
-    const headers = videoItem.headers
+    const m3u8Url = videoItem.url?.trim()
+    const headers = videoItem.headers || {}
+
+    if (!m3u8Url) {
+      this.dialogService.showNotification('任务异常', '当前任务缺少 m3u8 地址，请删除后重新抓取。')
+      return
+    }
+
     const sampleFilename = new URL(m3u8Url).pathname.split('/').pop()
 
     // Generate unique task ID if not provided
     const taskId = videoItem.taskId || generateTaskId()
-    const createdAt = videoItem.createdAt || new Date().getTime()
+    const existingTask = await this.getTaskById(taskId)
+    const createdAt = videoItem.createdAt || existingTask?.createdAt || new Date().getTime()
 
-    // Sanitize folder name
-    const sanitizedName = videoItem.name
-      ? sanitizeFolderName(videoItem.name)
-      : taskId
+    let conflictResolution: ReturnType<typeof resolveFolderConflict> | undefined
+    const existingDirectory = videoItem.directory || existingTask?.directory
 
-    // Detect and resolve folder conflicts
-    const conflictResolution = resolveFolderConflict(targetPath, sanitizedName, taskId)
-    const dirName = conflictResolution.resolvedName
-    console.log('@@@dirName', dirName, 'resolution:', conflictResolution.resolutionMethod)
+    if (existingDirectory) {
+      targetPath = existingDirectory
+    }
+    else {
+      const sanitizedName = videoItem.name
+        ? sanitizeFolderName(videoItem.name)
+        : taskId
 
-    targetPath = join(targetPath, dirName)
+      conflictResolution = resolveFolderConflict(targetPath, sanitizedName, taskId)
+      const dirName = conflictResolution.resolvedName
+      console.log('@@@dirName', dirName, 'resolution:', conflictResolution.resolutionMethod)
+      targetPath = join(targetPath, dirName)
+    }
+
     console.log('targetPath', targetPath)
     fs.mkdirSync(targetPath, { recursive: true })
+
+    if (existingTask)
+      await this.resetTaskRuntimeState(taskId)
 
     // Download og image if available
     if (videoItem.og) {
@@ -338,7 +384,7 @@ export class M3u8Service extends EventEmitter {
     }
 
     // Notify renderer if conflict was resolved
-    if (conflictResolution.originalName !== conflictResolution.resolvedName) {
+    if (conflictResolution && conflictResolution.originalName !== conflictResolution.resolvedName) {
       const message = conflictResolution.resolutionMethod === 'suffix'
         ? `Folder "${conflictResolution.originalName}" already exists. Using "${conflictResolution.resolvedName}" instead.`
         : `Too many conflicts. Using task ID as folder name: "${conflictResolution.resolvedName}"`
@@ -362,6 +408,7 @@ export class M3u8Service extends EventEmitter {
             taskId,
             createdAt,
             directory: targetPath,
+            folderConflict: undefined,
           }
           await jsondb.update(newTask)
           try {
@@ -402,7 +449,7 @@ export class M3u8Service extends EventEmitter {
             taskId,
             createdAt,
             directory: targetPath,
-            folderConflict: conflictResolution.originalName !== conflictResolution.resolvedName
+            folderConflict: conflictResolution && conflictResolution.originalName !== conflictResolution.resolvedName
               ? conflictResolution
               : undefined,
           }
@@ -430,31 +477,25 @@ export class M3u8Service extends EventEmitter {
     }
   }
 
-  public async deleteTask(num: number) {
+  public async deleteTask(taskRef: string | number) {
     try {
       const data = await jsondb.getDB()
       const tasks = data.tasks as TaskItem[]
-      const task = tasks[num]
+      const task = typeof taskRef === 'number'
+        ? tasks[taskRef]
+        : tasks.find(item => item.taskId === taskRef)
 
-      // Remove aria2 downloads if running
-      const gids = this.aria2Gids.get(task.url)
-      if (gids && aria2Service?.isRunning()) {
-        for (const gid of gids) {
-          try {
-            await aria2Service.remove(gid)
-          }
-          catch (error) {
-            Logger.error('[M3u8Service] Failed to remove aria2 download:', error)
-          }
-        }
-        this.aria2Gids.delete(task.url)
+      if (!task) {
+        Logger.warn(`[M3u8Service] Task not found when deleting: ${String(taskRef)}`)
+        return
       }
 
-      if (tasks[num].status === 'downloaded')
-        fsExtra.removeSync(tasks[num].directory)
+      await this.resetTaskRuntimeState(task.taskId)
 
-      tasks.splice(num, 1)
-      jsondb.db.tasks = tasks
+      if (task.directory && fs.existsSync(task.directory))
+        fsExtra.removeSync(task.directory)
+
+      jsondb.db.data.tasks = tasks.filter(item => item.taskId !== task.taskId)
       await jsondb.db.write()
     }
     catch (error) {
@@ -480,12 +521,12 @@ export class M3u8Service extends EventEmitter {
 
   async pauseTask(task: TaskItem) {
     await jsondb.update({ ...task, status: 'paused' })
-    const taskM = this.m3u8Tasks.get(task.url)
+    const taskM = this.m3u8Tasks.get(task.taskId)
     if (taskM)
       taskM.pause()
 
     // Pause aria2 downloads
-    const gids = this.aria2Gids.get(task.url)
+    const gids = this.aria2Gids.get(task.taskId)
     if (gids && aria2Service?.isRunning()) {
       for (const gid of gids) {
         try {
@@ -502,12 +543,12 @@ export class M3u8Service extends EventEmitter {
 
   async resumeTask(task: TaskItem) {
     await jsondb.update(task)
-    const taskM = this.m3u8Tasks.get(task.url)
+    const taskM = this.m3u8Tasks.get(task.taskId)
     if (taskM)
       taskM.resume()
 
     // Resume aria2 downloads
-    const gids = this.aria2Gids.get(task.url)
+    const gids = this.aria2Gids.get(task.taskId)
     if (gids && aria2Service?.isRunning()) {
       for (const gid of gids) {
         try {
@@ -591,8 +632,8 @@ export class M3u8Service extends EventEmitter {
       }
     }
 
-    if (this.m3u8Tasks.has(task.url)) {
-      const taskM = this.m3u8Tasks.get(task.url)
+    if (this.m3u8Tasks.has(task.taskId)) {
+      const taskM = this.m3u8Tasks.get(task.taskId)
       if (taskM.paused) {
         taskM.resume()
         return
@@ -690,7 +731,7 @@ export class M3u8Service extends EventEmitter {
     })
 
     const taskM = new TaskManager(promiseList)
-    this.m3u8Tasks.set(task.url, taskM)
+    this.m3u8Tasks.set(task.taskId, taskM)
 
     taskM.run(5).then(async () => {
       const results = taskM.res
