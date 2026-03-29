@@ -29,35 +29,55 @@ export class M3u8Service {
    * Create and start a new M3U8 download task
    */
   async createTask(options: TaskCreationOptions): Promise<TaskItem> {
-    Logger.info(`[M3u8Service] Creating task for: ${options.url}`)
+    Logger.info(`[M3u8Service] Creating/Restarting task for: ${options.url}`)
 
     try {
-      // Generate unique task ID
+      // Generate unique task ID or use existing one
       const taskId = options.taskId || generateTaskId()
       const createdAt = options.createdAt || new Date().getTime()
 
+      // Check if task exists (for re-download)
+      const existingTask = options.taskId ? await taskRepository.findById(options.taskId) : null
+
       // Create task item
-      const task: TaskItem = {
-        url: options.url,
-        headers: options.headers || {},
-        type: 'm3u8',
-        status: 'waiting',
-        taskId,
-        createdAt,
-        name: options.name,
-        from: options.from,
-        og: options.og,
+      const task: TaskItem = existingTask
+        ? {
+            ...existingTask,
+            url: options.url,
+            headers: options.headers || existingTask.headers,
+            status: 'waiting',
+          }
+        : {
+            url: options.url,
+            headers: options.headers || {},
+            type: 'm3u8',
+            status: 'waiting',
+            taskId,
+            createdAt,
+            name: options.name,
+            from: options.from,
+            og: options.og,
+          }
+
+      let targetPath: string
+      let conflictResolution: any = null
+
+      // Reuse existing directory if it exists
+      if (existingTask && existingTask.directory && fileService.directoryExists(existingTask.directory)) {
+        targetPath = existingTask.directory
+        Logger.info(`[M3u8Service] Reusing existing directory for task: ${targetPath}`)
+      }
+      else {
+        // Resolve folder conflicts and create directory
+        const dirName = sanitizeFolderName(options.name || taskId)
+        conflictResolution = resolveFolderConflict(this.storagePath, dirName, taskId)
+        targetPath = join(this.storagePath, conflictResolution.resolvedName)
+
+        await fileService.createDirectory(targetPath)
       }
 
-      // Resolve folder conflicts and create directory
-      const dirName = sanitizeFolderName(options.name || taskId)
-      const conflictResolution = resolveFolderConflict(this.storagePath, dirName, taskId)
-      const targetPath = join(this.storagePath, conflictResolution.resolvedName)
-
-      await fileService.createDirectory(targetPath)
-
       // Download M3U8 file
-      const m3u8FileName = options.url.split('/').pop() || 'playlist.m3u8'
+      const m3u8FileName = options.url.split('/').pop()?.split('?')[0] || 'playlist.m3u8'
       const m3u8Path = join(targetPath, m3u8FileName)
 
       await fileService.downloadFile(options.url, m3u8Path, options.headers)
@@ -79,7 +99,7 @@ export class M3u8Service {
       task.directory = targetPath
       task.segmentCount = m3u8Parser.getSegmentCount(parsedResult.data)
 
-      if (conflictResolution.originalName !== conflictResolution.resolvedName) {
+      if (conflictResolution && conflictResolution.originalName !== conflictResolution.resolvedName) {
         task.folderConflict = conflictResolution
 
         const message = conflictResolution.resolutionMethod === 'suffix'

@@ -74,6 +74,8 @@ export interface TaskCreationOptions {
   name?: string
   from?: string
   og?: OGMetadata
+  taskId?: string
+  createdAt?: number
 }
 
 /**
