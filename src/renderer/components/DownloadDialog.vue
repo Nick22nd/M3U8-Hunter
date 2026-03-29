@@ -24,7 +24,7 @@ watch(() => props.modelValue, (val) => {
   dialogVisible.value = val
   if (val)
     taskName.value = props.task.browserVideoItem.name || props.pageTitle
-})
+}, { immediate: true })
 
 watch(dialogVisible, (val) => {
   emit('update:modelValue', val)

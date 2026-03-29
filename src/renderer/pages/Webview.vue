@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Ref } from 'vue'
 import { onMounted, ref, toRaw, watch } from 'vue'
-import { ArrowLeft, ArrowRight, RefreshCw, Search, X } from 'lucide-vue-next'
+import { ArrowLeft, ArrowRight, Clock3, RefreshCw, Search, X } from 'lucide-vue-next'
 import { useStorage } from '@vueuse/core'
 import DownloadDialog from '../components/DownloadDialog.vue'
 import type { FindedResource, OGMetadata, TaskItem } from '../common.types'
@@ -24,12 +24,27 @@ interface HistoryRecord {
   [key: string]: number
 }
 
+interface BrowseHistoryItem {
+  url: string
+  title: string
+  visitedAt: number
+  visitCount?: number
+}
+
 const history = useStorage('history', [], localStorage) as Ref<string[]>
 const historyRecord = useStorage('historyRecord', {}, localStorage) as Ref<HistoryRecord>
+const browseHistory = useStorage('browse-history', [], localStorage) as Ref<BrowseHistoryItem[]>
 type webviewType = Electron.WebviewTag | null
 const webview = ref(null) as Ref<webviewType>
 const inputUrl = ref('')
 const mediaListVisible = ref(false)
+const historyVisible = ref(false)
+
+const sortedBrowseHistory = computed(() => {
+  return [...browseHistory.value]
+    .sort((left, right) => right.visitedAt - left.visitedAt)
+    .slice(0, 30)
+})
 
 watch(() => taskStore.task2webviewUrl, (newUrl, oldUrl) => {
   console.log('new: ', newUrl, 'old: ', oldUrl)
@@ -45,6 +60,83 @@ function resolveMetadataImage(imageUrl: string, pageUrl: string) {
   catch {
     return imageUrl
   }
+}
+
+function formatHistoryTime(timestamp: number) {
+  if (!timestamp)
+    return '刚刚'
+
+  return new Intl.DateTimeFormat('zh-CN', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(timestamp)
+}
+
+function normalizeUrl(rawUrl: string) {
+  return rawUrl.trim()
+}
+
+function migrateLegacyHistory() {
+  if (browseHistory.value.length > 0)
+    return
+
+  const now = Date.now()
+  const migratedHistory = history.value
+    .filter(item => typeof item === 'string' && item.trim().length > 0)
+    .map((item, index) => ({
+      url: item,
+      title: item,
+      visitedAt: now - (history.value.length - index) * 1000,
+      visitCount: historyRecord.value[item] || 1,
+    }))
+
+  if (migratedHistory.length > 0)
+    browseHistory.value = migratedHistory
+}
+
+function upsertBrowseHistory(entry: { url: string, title?: string }) {
+  const normalizedUrl = normalizeUrl(entry.url)
+  if (!normalizedUrl)
+    return
+
+  const existingItem = browseHistory.value.find(item => item.url === normalizedUrl)
+  const nextItem: BrowseHistoryItem = {
+    url: normalizedUrl,
+    title: entry.title?.trim() || existingItem?.title || normalizedUrl,
+    visitedAt: Date.now(),
+    visitCount: (existingItem?.visitCount || 0) + 1,
+  }
+
+  browseHistory.value = [
+    nextItem,
+    ...browseHistory.value.filter(item => item.url !== normalizedUrl),
+  ].slice(0, 100)
+}
+
+function updateBrowseHistoryTitle(entry: { url: string, title?: string }) {
+  const normalizedUrl = normalizeUrl(entry.url)
+  if (!normalizedUrl)
+    return
+
+  const existingItem = browseHistory.value.find(item => item.url === normalizedUrl)
+  if (!existingItem)
+    return
+
+  const nextTitle = entry.title?.trim()
+  if (!nextTitle || nextTitle === existingItem.title)
+    return
+
+  browseHistory.value = browseHistory.value.map((item) => {
+    if (item.url !== normalizedUrl)
+      return item
+
+    return {
+      ...item,
+      title: nextTitle,
+    }
+  })
 }
 
 async function syncPageMeta(pageUrl = url.value) {
@@ -83,12 +175,20 @@ async function syncPageMeta(pageUrl = url.value) {
       url: pageUrl,
       og,
     })
+    updateBrowseHistoryTitle({
+      url: pageUrl,
+      title: meta?.title || webview.value.getTitle() || pageUrl,
+    })
   }
   catch (error) {
     console.error('Error getting page metadata:', error)
     setCurrentPageMeta({
       title: webview.value.getTitle() || '',
       url: pageUrl,
+    })
+    updateBrowseHistoryTitle({
+      url: pageUrl,
+      title: webview.value.getTitle() || pageUrl,
     })
   }
 }
@@ -99,6 +199,15 @@ async function handleConfirm(task: TaskItem) {
       ...task,
       from: task.from || url.value,
       title: task.title || webview.value?.getTitle() || task.title,
+      headers: { ...(task.headers || {}) },
+      og: task.og
+        ? {
+            title: task.og.title || '',
+            image: task.og.image || '',
+            description: task.og.description || '',
+          }
+        : undefined,
+      tags: task.tags ? [...task.tags] : [],
     }
     const data = await sendMsgToMainProcess({
       name: MessageName.downloadM3u8,
@@ -119,7 +228,18 @@ async function handleConfirm(task: TaskItem) {
 
 function download(row: FindedResource) {
   console.log('download', url, row)
-  selectedTask.value = row
+  selectedTask.value = {
+    ...toRaw(row),
+    headers: { ...(toRaw(row).headers || {}) },
+    og: row.og
+      ? {
+          title: row.og.title || '',
+          image: row.og.image || '',
+          description: row.og.description || '',
+        }
+      : undefined,
+    tags: row.tags ? [...row.tags] : [],
+  }
   downloadDialogVisible.value = true
 }
 
@@ -156,14 +276,9 @@ function goForward() {
 
 onMounted(() => {
   console.log('mounted', webview.value)
-  if (Object.keys(historyRecord.value).length === 0) {
-    historyRecord.value = history.value.reduce((acc, cur) => {
-      acc[cur] = 1
-      return acc
-    }, {} as HistoryRecord)
-  }
+  migrateLegacyHistory()
 
-  url.value = history.value.at(-1) || ''
+  url.value = browseHistory.value[0]?.url || history.value.at(-1) || ''
   inputUrl.value = url.value
 
   webview.value?.addEventListener('dom-ready', () => {
@@ -206,10 +321,16 @@ onMounted(() => {
     canGoBack.value = webview.value?.canGoBack() || false
     canGoForward.value = webview.value?.canGoForward() || false
     clearFindResource()
+    historyVisible.value = false
     if (!historyRecord.value[e.url])
       historyRecord.value[e.url] = 1
     else
       historyRecord.value[e.url] += 1
+
+    upsertBrowseHistory({
+      url: e.url,
+      title: webview.value?.getTitle() || e.url,
+    })
   })
 
   webview.value?.addEventListener('did-start-loading', () => {
@@ -223,8 +344,14 @@ onActivated(() => {
 
 function urlChange(val: string | number) {
   console.log('urlChange', val)
-  url.value = val as string
-  webview.value?.loadURL(val as string)
+  const nextUrl = normalizeUrl(val as string)
+  if (!nextUrl)
+    return
+
+  url.value = nextUrl
+  inputUrl.value = nextUrl
+  historyVisible.value = false
+  webview.value?.loadURL(nextUrl)
 }
 </script>
 
@@ -266,18 +393,40 @@ function urlChange(val: string | number) {
       </div>
       <!-- History dropdown -->
       <div class="relative">
-        <select
-          class="appearance-none px-2 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 dark:text-gray-300 max-w-28 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-400"
-          @change="(e) => urlChange((e.target as HTMLSelectElement).value)"
+        <button
+          type="button"
+          class="flex items-center gap-1.5 px-2 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 dark:text-gray-300 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-400"
+          @click="historyVisible = !historyVisible"
         >
-          <option value="" disabled selected>
-            历史
-          </option>
-          <option v-for="item in [...history].reverse().slice(0, 30)" :key="item" :value="item" :title="item">
-            {{ item.length > 30 ? `${item.slice(0, 30)}…` : item }}
-            {{ item.length > 30 ? `${item.slice(0, 30)}…` : item }}
-          </option>
-        </select>
+          <Clock3 :size="13" />
+          历史
+        </button>
+        <div
+          v-if="historyVisible"
+          class="absolute right-0 top-10 z-30 w-90 max-h-96 overflow-y-auto rounded-2xl border border-gray-100 bg-white p-2 shadow-2xl dark:border-gray-800 dark:bg-gray-900"
+        >
+          <div v-if="sortedBrowseHistory.length === 0" class="px-3 py-8 text-center text-xs text-gray-400">
+            暂无浏览历史
+          </div>
+          <button
+            v-for="item in sortedBrowseHistory"
+            :key="item.url"
+            type="button"
+            class="w-full rounded-xl px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            @click="urlChange(item.url)"
+          >
+            <div class="mb-1 truncate text-sm text-gray-700 dark:text-gray-200" :title="item.title || item.url">
+              {{ item.title || item.url }}
+            </div>
+            <div class="truncate text-xs text-gray-400" :title="item.url">
+              {{ item.url }}
+            </div>
+            <div class="mt-1 text-[11px] text-gray-400 flex items-center justify-between gap-2">
+              <span>{{ formatHistoryTime(item.visitedAt) }}</span>
+              <span>访问 {{ item.visitCount || 1 }} 次</span>
+            </div>
+          </button>
+        </div>
       </div>
     </div>
 
