@@ -262,6 +262,16 @@ const handlers = {
   [MessageName.migrateTasks]: async () => {
     return await serviceHub.m3u8Service.migrateTasks()
   },
+  [MessageName.updateTaskMetadata]: async (data: { taskId: string, updates: Partial<TaskItem> }) => {
+    const taskList = await serviceHub.m3u8Service.updateTaskMetadata(data.taskId, data.updates)
+    const newMessage: Message4Renderer = {
+      type: 'm3u8',
+      name: MessageName.getTasks,
+      data: taskList,
+    }
+    win?.webContents.send('reply-msg', newMessage)
+    return taskList
+  },
 }
 
 ipcMain.handle('msg', async (event, arg) => {

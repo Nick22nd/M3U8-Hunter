@@ -1,23 +1,58 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { MessageName } from '../common.types'
-import type { FindedResource, TabList, TaskItem } from '../common.types'
+import type { FindedResource, OGMetadata, TabList, TaskItem } from '../common.types'
+
+interface PageMediaMeta {
+  title: string
+  url: string
+  og?: OGMetadata
+}
 
 export const useFindedMediaStore = defineStore('FindedMedia', () => {
   const findedMediaList = ref<FindedResource[]>([])
   const findedMediaListCount = computed(() => findedMediaList.value.length)
+  const currentPageMeta = ref<PageMediaMeta>({
+    title: '',
+    url: '',
+  })
+
   function clearFindResource() {
     findedMediaList.value = []
   }
+
+  function enrichResource(resource: FindedResource): FindedResource {
+    return {
+      ...resource,
+      name: resource.name || currentPageMeta.value.title,
+      title: resource.title || currentPageMeta.value.title,
+      from: resource.from || currentPageMeta.value.url,
+      og: resource.og?.image ? resource.og : currentPageMeta.value.og,
+      tags: resource.tags || [],
+    }
+  }
+
+  function syncCurrentPageMeta() {
+    findedMediaList.value = findedMediaList.value.map(item => enrichResource(item))
+  }
+
+  function setCurrentPageMeta(meta: Partial<PageMediaMeta>) {
+    currentPageMeta.value = {
+      ...currentPageMeta.value,
+      ...meta,
+    }
+    syncCurrentPageMeta()
+  }
+
   function addFindResource(resource: FindedResource) {
     const isDuplicated = findedMediaList.value.some(item => item.url === resource.url)
     if (!isDuplicated)
-      findedMediaList.value.push(resource)
+      findedMediaList.value.push(enrichResource(resource))
     else
       console.log('duplicated')
   }
 
-  return { findedMediaList, findedMediaListCount, clearFindResource, addFindResource }
+  return { findedMediaList, findedMediaListCount, currentPageMeta, clearFindResource, addFindResource, setCurrentPageMeta }
 })
 interface ServerConfig {
   ip: string
@@ -25,8 +60,9 @@ interface ServerConfig {
 }
 type TabName = (typeof TabList)[keyof typeof TabList]
 export const useTaskStore = defineStore('tasks', () => {
-  const activeTab = ref('Tasks')
+  const activeTab = ref('Home')
   const playUrl = ref('')
+  const currentTaskId = ref('')
   const playerTitle = ref('')
   const tasks = ref<TaskItem[]>([])
   const tasksCount = computed(() => tasks.value.length)
@@ -80,6 +116,7 @@ export const useTaskStore = defineStore('tasks', () => {
     activeTaskCount,
     failedTaskCount,
     playUrl,
+    currentTaskId,
     task2webviewUrl,
     urlPrefix,
     playerTitle,

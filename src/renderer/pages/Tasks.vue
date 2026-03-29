@@ -154,9 +154,10 @@ function playTask(task: TaskItem) {
   const fileName = new URL(task.url).pathname.split('/').pop()
   console.log('fileName', fileName)
   taskStore.playUrl = `${taskStore.urlPrefix + task.directory?.split(splitSymbol).pop()}/${fileName}`
+  taskStore.currentTaskId = task.taskId
   taskStore.playerTitle = task.title || 'player'
-  taskStore.switchTab(TabList.Home)
-  router.push({ path: '/', query: { from: 'tasks' } })
+  taskStore.switchTab(TabList.Player)
+  router.push({ path: '/player', query: { from: 'tasks' } })
 }
 
 function openLink(task: TaskItem) {

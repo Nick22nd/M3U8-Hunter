@@ -120,7 +120,7 @@ async function dowloadTS() {
     <SideBar />
     <main class="flex-1 overflow-hidden">
       <router-view v-slot="{ Component }">
-        <keep-alive :include="['Webview', 'Tasks']">
+        <keep-alive :include="['Home', 'Webview', 'Tasks']">
           <component :is="Component" />
         </keep-alive>
       </router-view>

@@ -4,24 +4,26 @@ import { onMounted, ref, toRaw, watch } from 'vue'
 import { ArrowLeft, ArrowRight, RefreshCw, Search, X } from 'lucide-vue-next'
 import { useStorage } from '@vueuse/core'
 import DownloadDialog from '../components/DownloadDialog.vue'
-import type { TaskItem } from '../common.types'
+import type { FindedResource, OGMetadata, TaskItem } from '../common.types'
 import { MessageName } from '../common.types'
 import { useFindedMediaStore, useTaskStore } from '../stores/'
 import { toast } from '../composables/toast'
 
-const { clearFindResource } = useFindedMediaStore()
-const findedMediaStore = useFindedMediaStore()
+const mediaStore = useFindedMediaStore()
+const { clearFindResource, setCurrentPageMeta } = mediaStore
 const canGoBack = ref(false)
 const canGoForward = ref(false)
 const domReady = ref(false)
 const downloadDialogVisible = ref(false)
-const selectedTask = ref<MediaMessage | null>(null)
+const selectedTask = ref<FindedResource | null>(null)
 const { sendMsg: sendMsgToMainProcess } = window.electron
 const taskStore = useTaskStore()
 const url = ref('')
+
 interface HistoryRecord {
   [key: string]: number
 }
+
 const history = useStorage('history', [], localStorage) as Ref<string[]>
 const historyRecord = useStorage('historyRecord', {}, localStorage) as Ref<HistoryRecord>
 type webviewType = Electron.WebviewTag | null
@@ -34,20 +36,69 @@ watch(() => taskStore.task2webviewUrl, (newUrl, oldUrl) => {
   urlChange(newUrl)
 })
 
-interface MediaMessage {
-  headers: {
-    [key: string]: string
+function resolveMetadataImage(imageUrl: string, pageUrl: string) {
+  if (!imageUrl)
+    return ''
+  try {
+    return new URL(imageUrl, pageUrl).toString()
   }
-  type: string
-  url: string
+  catch {
+    return imageUrl
+  }
+}
+
+async function syncPageMeta(pageUrl = url.value) {
+  if (!webview.value || !pageUrl)
+    return
+
+  try {
+    const meta = await webview.value.executeJavaScript(`(() => {
+      const pick = (...selectors) => {
+        for (const selector of selectors) {
+          const el = document.querySelector(selector)
+          const value = el?.getAttribute('content') || el?.getAttribute('href') || ''
+          if (value)
+            return value
+        }
+        return ''
+      }
+
+      return {
+        title: document.title || '',
+        image: pick('meta[property="og:image"]', 'meta[name="twitter:image"]', 'link[rel="apple-touch-icon"]', 'link[rel="icon"]'),
+        description: pick('meta[property="og:description"]', 'meta[name="description"]', 'meta[name="twitter:description"]'),
+      }
+    })()`)
+
+    const og: OGMetadata | undefined = meta?.image || meta?.description || meta?.title
+      ? {
+          title: meta?.title || webview.value.getTitle() || '',
+          image: resolveMetadataImage(meta?.image || '', pageUrl),
+          description: meta?.description || '',
+        }
+      : undefined
+
+    setCurrentPageMeta({
+      title: meta?.title || webview.value.getTitle() || '',
+      url: pageUrl,
+      og,
+    })
+  }
+  catch (error) {
+    console.error('Error getting page metadata:', error)
+    setCurrentPageMeta({
+      title: webview.value.getTitle() || '',
+      url: pageUrl,
+    })
+  }
 }
 
 async function handleConfirm(task: TaskItem) {
   try {
     const enrichedTask: TaskItem = {
       ...task,
-      from: url.value,
-      title: webview.value?.getTitle() || task.title,
+      from: task.from || url.value,
+      title: task.title || webview.value?.getTitle() || task.title,
     }
     const data = await sendMsgToMainProcess({
       name: MessageName.downloadM3u8,
@@ -66,13 +117,13 @@ async function handleConfirm(task: TaskItem) {
   }
 }
 
-function download(row: MediaMessage) {
+function download(row: FindedResource) {
   console.log('download', url, row)
   selectedTask.value = row
   downloadDialogVisible.value = true
 }
 
-function writeClipboard(row: MediaMessage) {
+function writeClipboard(row: FindedResource) {
   const rowRaw = toRaw(row)
   navigator.clipboard.writeText(rowRaw.url)
   toast.success('已复制链接')
@@ -111,8 +162,10 @@ onMounted(() => {
       return acc
     }, {} as HistoryRecord)
   }
+
   url.value = history.value.at(-1) || ''
   inputUrl.value = url.value
+
   webview.value?.addEventListener('dom-ready', () => {
     console.log('dom-ready')
     webview.value?.openDevTools()
@@ -128,33 +181,28 @@ onMounted(() => {
         font-family: "system";
       }
     `)
-    webview.value?.executeJavaScript(`
-      Array.from(document.querySelectorAll('meta')).map(meta => ({
-        name: meta.getAttribute('name'),
-        property: meta.getAttribute('property'),
-        content: meta.getAttribute('content')
-      }))
-    `).then((metaData) => {
-      console.log('Meta data:', metaData)
-    }).catch((error) => {
-      console.error('Error getting meta data:', error)
-    })
+    domReady.value = true
+    void syncPageMeta(webview.value?.getURL() || url.value)
   })
+
   webview.value?.addEventListener('new-window', (e: any) => {
     console.log('new-window', e)
     const protocol = (new URL(e.url)).protocol
     if (protocol === 'http:' || protocol === 'https:')
       webview.value?.loadURL(e.url)
   })
+
   const navigateEvent = (e: { url: string }) => {
     console.log('will-navigate', e.url)
     url.value = e.url
   }
+
   webview.value?.addEventListener('will-navigate', navigateEvent)
   webview.value?.addEventListener('did-navigate', (e) => {
     console.log('did-navigate')
     url.value = e.url
     inputUrl.value = e.url
+    setCurrentPageMeta({ title: '', url: e.url, og: undefined })
     canGoBack.value = webview.value?.canGoBack() || false
     canGoForward.value = webview.value?.canGoForward() || false
     clearFindResource()
@@ -163,17 +211,16 @@ onMounted(() => {
     else
       historyRecord.value[e.url] += 1
   })
-  webview.value?.addEventListener('dom-ready', () => {
-    console.log('dom-ready')
-    domReady.value = true
-  })
+
   webview.value?.addEventListener('did-start-loading', () => {
     domReady.value = false
   })
 })
+
 onActivated(() => {
   console.log('activated webview')
 })
+
 function urlChange(val: string | number) {
   console.log('urlChange', val)
   url.value = val as string
@@ -250,14 +297,14 @@ function urlChange(val: string | number) {
     <button
       type="button"
       class="fixed bottom-4 left-4 z-20 flex items-center gap-2 px-3 py-2 rounded-xl bg-white dark:bg-gray-900 border shadow-lg text-sm transition-colors"
-      :class="findedMediaStore.findedMediaListCount > 0 ? 'border-blue-400 text-blue-500' : 'border-gray-200 dark:border-gray-700 text-gray-400'"
+      :class="mediaStore.findedMediaListCount > 0 ? 'border-blue-400 text-blue-500' : 'border-gray-200 dark:border-gray-700 text-gray-400'"
       @click="mediaListVisible = !mediaListVisible"
     >
       <span
-        v-if="findedMediaStore.findedMediaListCount > 0"
+        v-if="mediaStore.findedMediaListCount > 0"
         class="w-4 h-4 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center font-bold leading-none"
-      >{{ findedMediaStore.findedMediaListCount }}</span>
-      <span>{{ findedMediaStore.findedMediaListCount > 0 ? `发现 ${findedMediaStore.findedMediaListCount} 个 M3U8` : '未发现 M3U8' }}</span>
+      >{{ mediaStore.findedMediaListCount }}</span>
+      <span>{{ mediaStore.findedMediaListCount > 0 ? `发现 ${mediaStore.findedMediaListCount} 个媒体资源` : '未发现媒体资源' }}</span>
     </button>
 
     <!-- Media list panel -->
@@ -266,20 +313,35 @@ function urlChange(val: string | number) {
       class="fixed bottom-16 left-4 z-30 bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800 w-96 max-h-72 flex flex-col overflow-hidden"
     >
       <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800 shrink-0">
-        <span class="text-sm font-semibold text-gray-800 dark:text-gray-100">发现的 M3U8</span>
+        <span class="text-sm font-semibold text-gray-800 dark:text-gray-100">发现的媒体</span>
         <button type="button" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200" @click="mediaListVisible = false">
           <X :size="14" />
         </button>
       </div>
       <div class="overflow-y-auto flex-1">
         <div
-          v-for="(row, idx) in findedMediaStore.findedMediaList"
+          v-for="(row, idx) in mediaStore.findedMediaList"
           :key="row.url"
-          class="flex items-center gap-2 px-4 py-2.5 border-b border-gray-50 dark:border-gray-800/60 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800/50"
+          class="flex items-center gap-3 px-4 py-3 border-b border-gray-50 dark:border-gray-800/60 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800/50"
         >
-          <span class="text-xs text-gray-400 w-5 shrink-0">{{ idx + 1 }}</span>
-          <span class="text-xs bg-gray-100 dark:bg-gray-800 text-gray-500 px-1.5 py-0.5 rounded shrink-0">{{ row.type }}</span>
-          <span class="text-xs truncate text-gray-600 dark:text-gray-300 flex-1 min-w-0" :title="row.url">{{ row.url }}</span>
+          <div class="flex h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-gray-100 dark:bg-gray-800">
+            <img v-if="row.og?.image" :src="row.og.image" :alt="row.title || row.name || row.url" class="h-full w-full object-cover">
+            <div v-else class="flex h-full w-full items-center justify-center text-xs text-gray-400">
+              {{ row.type }}
+            </div>
+          </div>
+          <div class="min-w-0 flex-1">
+            <div class="mb-1 flex items-center gap-2">
+              <span class="text-xs text-gray-400 w-5 shrink-0">{{ idx + 1 }}</span>
+              <span class="text-xs bg-gray-100 dark:bg-gray-800 text-gray-500 px-1.5 py-0.5 rounded shrink-0">{{ row.type }}</span>
+            </div>
+            <div class="truncate text-sm text-gray-700 dark:text-gray-200" :title="row.title || row.name || row.url">
+              {{ row.title || row.name || row.url }}
+            </div>
+            <div class="truncate text-xs text-gray-400" :title="row.url">
+              {{ row.url }}
+            </div>
+          </div>
           <button
             type="button"
             class="shrink-0 px-2 py-1 text-xs text-blue-500 hover:text-blue-600 rounded transition-colors"
@@ -302,7 +364,7 @@ function urlChange(val: string | number) {
       v-if="selectedTask"
       v-model="downloadDialogVisible"
       :task="{ browserVideoItem: selectedTask }"
-      :page-title="webview?.getTitle() || ''"
+      :page-title="selectedTask.title || selectedTask.name || webview?.getTitle() || ''"
       @confirm="handleConfirm"
     />
   </div>

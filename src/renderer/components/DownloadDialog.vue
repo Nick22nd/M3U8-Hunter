@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import type { MediaMessage, TaskItem } from '../common.types'
+import type { MediaMessage, OGMetadata, TaskItem } from '../common.types'
 import { toast } from '../composables/toast'
 
 interface Props {
@@ -22,14 +22,21 @@ const loading = ref(false)
 
 watch(() => props.modelValue, (val) => {
   dialogVisible.value = val
-  if (val) {
-    taskName.value = props.pageTitle
-  }
+  if (val)
+    taskName.value = props.task.browserVideoItem.name || props.pageTitle
 })
 
 watch(dialogVisible, (val) => {
   emit('update:modelValue', val)
 })
+
+function getOgData(): OGMetadata {
+  return {
+    title: props.task.browserVideoItem.og?.title || props.pageTitle,
+    image: props.task.browserVideoItem.og?.image || '',
+    description: props.task.browserVideoItem.og?.description || '',
+  }
+}
 
 async function handleConfirm() {
   if (!taskName.value.trim()) {
@@ -39,18 +46,18 @@ async function handleConfirm() {
 
   try {
     loading.value = true
-    const ogData = await getOgData()
     const newTask: TaskItem = {
       status: 'downloading',
-      from: (window as any).url?.value || '',
-      title: props.pageTitle,
+      from: props.task.browserVideoItem.from || '',
+      title: props.task.browserVideoItem.title || props.pageTitle,
       name: taskName.value,
       taskId: '',
       createdAt: Date.now(),
       url: props.task.browserVideoItem.url,
       headers: props.task.browserVideoItem.headers,
       type: props.task.browserVideoItem.type,
-      og: ogData,
+      og: getOgData(),
+      tags: props.task.browserVideoItem.tags || [],
     }
     emit('confirm', newTask)
     toast.success(`已创建任务：${taskName.value}`)
@@ -69,25 +76,6 @@ function handleCancel() {
   dialogVisible.value = false
   emit('update:modelValue', false)
 }
-
-async function getOgData() {
-  try {
-    const ogData = {
-      title: props.pageTitle,
-      image: '',
-      description: '',
-    }
-    return ogData
-  }
-  catch (error) {
-    console.error('Failed to get og data:', error)
-    return {
-      title: props.pageTitle,
-      image: '',
-      description: '',
-    }
-  }
-}
 </script>
 
 <template>
@@ -100,6 +88,13 @@ async function getOgData() {
       <h3 class="text-base font-semibold mb-4 text-gray-800 dark:text-gray-100">
         创建下载任务
       </h3>
+      <div v-if="props.task.browserVideoItem.og?.image" class="mb-4 overflow-hidden rounded-2xl border border-gray-100 dark:border-gray-800">
+        <img
+          :src="props.task.browserVideoItem.og.image"
+          :alt="props.task.browserVideoItem.og.title || props.pageTitle"
+          class="h-40 w-full object-cover"
+        >
+      </div>
       <label class="text-sm text-gray-500 dark:text-gray-400 mb-1 block">任务名称</label>
       <input
         v-model="taskName"
@@ -109,6 +104,15 @@ async function getOgData() {
         class="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400 mb-6"
         @keydown.enter="handleConfirm"
       >
+      <div v-if="props.task.browserVideoItem.tags?.length" class="mb-6 flex flex-wrap gap-2">
+        <span
+          v-for="tag in props.task.browserVideoItem.tags"
+          :key="tag"
+          class="rounded-full bg-blue-50 px-2.5 py-1 text-xs text-blue-600 dark:bg-blue-900/30 dark:text-blue-300"
+        >
+          #{{ tag }}
+        </span>
+      </div>
       <div class="flex justify-end gap-3">
         <button
           type="button"

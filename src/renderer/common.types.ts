@@ -20,7 +20,15 @@ export enum MessageName {
   stopAria2,
   getAria2Status,
   migrateTasks,
+  updateTaskMetadata,
 }
+
+export interface OGMetadata {
+  title: string
+  image: string
+  description: string
+}
+
 export interface Message4Renderer {
   type: string
   name: MessageName
@@ -45,11 +53,8 @@ export interface TaskItem {
   downloadedCount?: number
   progress?: string
   retryCount?: number
-  og?: {
-    title: string
-    image: string
-    description: string
-  }
+  og?: OGMetadata
+  tags?: string[]
   folderConflict?: {
     originalName: string
     resolvedName: string
@@ -63,6 +68,11 @@ export interface FindedResource {
     [key: string]: string
   }
   type: string
+  name?: string
+  title?: string
+  from?: string
+  og?: OGMetadata
+  tags?: string[]
 }
 export interface MediaMessage {
   browserVideoItem: {
@@ -71,11 +81,17 @@ export interface MediaMessage {
     }
     type: string
     url: string
+    name?: string
+    title?: string
+    from?: string
+    og?: OGMetadata
+    tags?: string[]
   }
 }
 
 export const TabList = {
-  Home: 'Player',
+  Home: 'Home',
+  Player: 'Player',
   Tasks: 'Tasks',
   Explore: 'Explore',
   Setting: 'Setting',

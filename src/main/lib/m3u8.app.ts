@@ -50,6 +50,37 @@ export class M3u8Service extends EventEmitter {
     return data
   }
 
+  private normalizeTags(tags?: string[]) {
+    return Array.from(new Set((tags || []).map(tag => tag.trim()).filter(Boolean)))
+  }
+
+  public async updateTaskMetadata(taskId: string, updates: Partial<TaskItem>) {
+    const data = await jsondb.getDB()
+    const tasks = data.tasks as TaskItem[]
+    let updated = false
+
+    const newTasks = tasks.map((task) => {
+      if (task.taskId !== taskId)
+        return task
+
+      updated = true
+      return {
+        ...task,
+        ...updates,
+        og: updates.og ? { ...task.og, ...updates.og } : task.og,
+        tags: updates.tags ? this.normalizeTags(updates.tags) : task.tags,
+      }
+    })
+
+    if (!updated)
+      throw new Error(`Task not found: ${taskId}`)
+
+    jsondb.db.data.tasks = newTasks
+    await jsondb.db.write()
+    this.dialogService.updateProgress(newTasks)
+    return { tasks: newTasks }
+  }
+
   /**
    * Download og image to target directory
    */

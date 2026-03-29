@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useDark, useToggle } from '@vueuse/core'
-import { Film, Globe, Info, ListChecks, Moon, Settings, Sun } from 'lucide-vue-next'
+import { Film, Globe, Home, Info, ListChecks, Moon, Settings, Sun } from 'lucide-vue-next'
 import { useRoute } from 'vue-router'
 import { useFindedMediaStore, useTaskStore } from '../stores'
 
@@ -8,8 +8,9 @@ const taskStore = useTaskStore()
 const mediaStore = useFindedMediaStore()
 
 const myRoutes = [
+  { path: '/', name: 'Home', icon: Home, desc: '封面与标签媒体库' },
   { path: '/tasks', name: 'Tasks', icon: ListChecks, desc: '任务与下载状态' },
-  { path: '/', name: 'Player', icon: Film, desc: '播放器与预览' },
+  { path: '/player', name: 'Player', icon: Film, desc: '播放器与预览' },
   { path: '/webview', name: 'Explore', icon: Globe, desc: '网页探测与抓流' },
   { path: '/setting', name: 'Setting', icon: Settings, desc: '下载与 Aria2 配置' },
   { path: '/about', name: 'About', icon: Info, desc: '关于' },

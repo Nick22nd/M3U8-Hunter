@@ -61,6 +61,7 @@ export interface TaskItem {
   progress?: string
   retryCount?: number
   og?: OGMetadata
+  tags?: string[]
   folderConflict?: FolderConflict
   createTime?: number
 }
@@ -74,6 +75,7 @@ export interface TaskCreationOptions {
   name?: string
   from?: string
   og?: OGMetadata
+  tags?: string[]
   taskId?: string
   createdAt?: number
 }
@@ -88,5 +90,6 @@ export interface TaskUpdateOptions {
   progress?: string
   directory?: string
   og?: OGMetadata
+  tags?: string[]
   folderConflict?: FolderConflict
 }

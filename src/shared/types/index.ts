@@ -31,6 +31,7 @@ export enum MessageName {
   stopAria2,
   getAria2Status,
   migrateTasks,
+  updateTaskMetadata,
 }
 
 export interface Message4Renderer {
@@ -43,6 +44,15 @@ export interface FindedResource {
   url: string
   headers: Record<string, string>
   type: string
+  name?: string
+  title?: string
+  from?: string
+  og?: {
+    title: string
+    image: string
+    description: string
+  }
+  tags?: string[]
 }
 
 export interface MediaMessage {
@@ -50,5 +60,14 @@ export interface MediaMessage {
     headers: Record<string, string>
     type: string
     url: string
+    name?: string
+    title?: string
+    from?: string
+    og?: {
+      title: string
+      image: string
+      description: string
+    }
+    tags?: string[]
   }
 }
