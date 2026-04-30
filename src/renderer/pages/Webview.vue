@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Ref } from 'vue'
-import { onMounted, ref, toRaw, watch } from 'vue'
+import { computed, onMounted, ref, toRaw, watch } from 'vue'
 import { ArrowLeft, ArrowRight, Clock3, RefreshCw, Search, X } from 'lucide-vue-next'
 import { useStorage } from '@vueuse/core'
 import DownloadDialog from '../components/DownloadDialog.vue'
@@ -249,11 +249,18 @@ function writeClipboard(row: FindedResource) {
   toast.success('已复制链接')
 }
 
-function openDevTool() {
-  if (webview.value?.isDevToolsOpened())
-    webview.value?.closeDevTools()
-  else
-    webview.value?.openDevTools()
+function getStreamLabel(resource: FindedResource) {
+  if (resource.streamType === 'live')
+    return '直播'
+  if (resource.durationStr)
+    return `点播 · ${resource.durationStr}`
+  return '点播'
+}
+
+function getStreamTone(resource: FindedResource) {
+  return resource.streamType === 'live'
+    ? 'bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-300'
+    : 'bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-300'
 }
 
 function refreshPage() {
@@ -336,10 +343,6 @@ onMounted(() => {
   webview.value?.addEventListener('did-start-loading', () => {
     domReady.value = false
   })
-})
-
-onActivated(() => {
-  console.log('activated webview')
 })
 
 function urlChange(val: string | number) {
@@ -433,15 +436,6 @@ function urlChange(val: string | number) {
     <!-- Webview -->
     <webview ref="webview" :src="url" class="flex-1 w-full" allowpopups />
 
-    <!-- DevTools button -->
-    <button
-      type="button"
-      class="fixed bottom-4 right-4 px-3 py-1.5 text-xs rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors z-20"
-      @click="openDevTool"
-    >
-      DevTools
-    </button>
-
     <!-- Found M3U8 badge -->
     <button
       type="button"
@@ -483,12 +477,21 @@ function urlChange(val: string | number) {
             <div class="mb-1 flex items-center gap-2">
               <span class="text-xs text-gray-400 w-5 shrink-0">{{ idx + 1 }}</span>
               <span class="text-xs bg-gray-100 dark:bg-gray-800 text-gray-500 px-1.5 py-0.5 rounded shrink-0">{{ row.type }}</span>
+              <span class="text-xs px-1.5 py-0.5 rounded shrink-0" :class="getStreamTone(row)">{{ getStreamLabel(row) }}</span>
             </div>
             <div class="truncate text-sm text-gray-700 dark:text-gray-200" :title="row.title || row.name || row.url">
               {{ row.title || row.name || row.url }}
             </div>
             <div class="truncate text-xs text-gray-400" :title="row.url">
               {{ row.url }}
+            </div>
+            <div class="mt-1 flex flex-wrap gap-1 text-[11px] text-gray-400">
+              <span v-if="row.segmentCount" class="rounded-full bg-gray-100 px-2 py-0.5 dark:bg-gray-800">
+                {{ row.segmentCount }} 片段
+              </span>
+              <span v-if="row.isLive" class="rounded-full bg-red-50 px-2 py-0.5 text-red-500 dark:bg-red-950/30 dark:text-red-300">
+                持续更新
+              </span>
             </div>
           </div>
           <button

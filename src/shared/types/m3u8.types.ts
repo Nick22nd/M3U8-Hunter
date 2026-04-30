@@ -8,6 +8,8 @@ export interface M3U8Manifest {
   duration?: number
   targetDuration?: number
   version?: number
+  endList?: boolean
+  mediaSequence?: number
 }
 
 export interface M3U8Playlist {
@@ -37,10 +39,17 @@ export interface M3U8Key {
   keyFormatVersions?: string
 }
 
+export type M3U8StreamType = 'live' | 'vod' | 'unknown'
+
 export interface ParsedM3U8 {
   type: 'playlist' | 'segments'
   data: M3U8Manifest
   duration: number
+  streamType: M3U8StreamType
+  segmentCount: number
+  isLive: boolean
+  suspectedAd: boolean
+  adSignals: string[]
 }
 
 export interface ParsedSegment {

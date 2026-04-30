@@ -31,14 +31,10 @@
   },
   "devDependencies": {
     "@antfu/eslint-config": "^2.18.0",
-    "@chenfengyuan/vue-qrcode": "^2.0.0",
-    "@ffmpeg/ffmpeg": "^0.12.10",
-    "@ffmpeg/util": "^0.12.1",
     "@rushstack/eslint-patch": "^1.8.0",
     "@types/dplayer": "^1.25.5",
     "@vitejs/plugin-vue": "^5.0.1",
     "@vitest/ui": "^1.4.0",
-    
     "@vue/eslint-config-typescript": "^13.0.0",
     "@vueuse/core": "^10.9.0",
     "async": "^3.2.5",
@@ -54,7 +50,6 @@
     "eslint-plugin-node": "^11.1.0",
     "eslint-plugin-vue": "^9.25.0",
     "express": "^4.18.3",
-    "fluent-ffmpeg": "^2.1.2",
     "got": "^14.0.0",
     "hls.js": "^1.5.8",
     "lowdb": "^7.0.1",
@@ -62,8 +57,6 @@
     "m3u8-parser": "^7.1.0",
     "pinia": "^2.1.7",
     "portfinder": "^1.0.32",
-    
-    "qrcode": "1",
     "simple-git-hooks": "^2.11.1",
     "tree-kill": "^1.2.2",
     "typescript": "^5.9.3",

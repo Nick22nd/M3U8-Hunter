@@ -8,6 +8,8 @@ export * from './ipc.types'
 export * from './m3u8.types'
 export * from './error.types'
 
+export type M3U8StreamType = 'live' | 'vod' | 'unknown'
+
 // Re-export legacy types for backward compatibility
 export enum MessageName {
   getTasks,
@@ -44,6 +46,11 @@ export interface FindedResource {
   url: string
   headers: Record<string, string>
   type: string
+  duration?: number
+  durationStr?: string
+  streamType?: M3U8StreamType
+  isLive?: boolean
+  segmentCount?: number
   name?: string
   title?: string
   from?: string
@@ -59,6 +66,11 @@ export interface MediaMessage {
   browserVideoItem: {
     headers: Record<string, string>
     type: string
+    duration?: number
+    durationStr?: string
+    streamType?: M3U8StreamType
+    isLive?: boolean
+    segmentCount?: number
     url: string
     name?: string
     title?: string

@@ -45,11 +45,19 @@ export const useFindedMediaStore = defineStore('FindedMedia', () => {
   }
 
   function addFindResource(resource: FindedResource) {
-    const isDuplicated = findedMediaList.value.some(item => item.url === resource.url)
-    if (!isDuplicated)
-      findedMediaList.value.push(enrichResource(resource))
-    else
-      console.log('duplicated')
+    const enriched = enrichResource(resource)
+    const index = findedMediaList.value.findIndex(item => item.url === resource.url)
+
+    if (index === -1) {
+      findedMediaList.value.unshift(enriched)
+      return
+    }
+
+    findedMediaList.value[index] = {
+      ...findedMediaList.value[index],
+      ...enriched,
+      headers: { ...findedMediaList.value[index].headers, ...enriched.headers },
+    }
   }
 
   return { findedMediaList, findedMediaListCount, currentPageMeta, clearFindResource, addFindResource, setCurrentPageMeta }

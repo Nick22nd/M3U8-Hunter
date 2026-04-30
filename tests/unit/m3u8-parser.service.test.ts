@@ -18,13 +18,16 @@ segment1.ts
 #EXTINF:10.0,
 segment2.ts
 #EXTINF:10.0,
-segment3.ts`
+segment3.ts
+#EXT-X-ENDLIST`
 
       const result = parser.parse(content)
 
       expect(result.type).toBe('segments')
       expect(result.data).toBeDefined()
       expect(result.duration).toBe(30)
+      expect(result.streamType).toBe('vod')
+      expect(result.isLive).toBe(false)
     })
 
     it('should parse M3U8 with playlists', () => {
@@ -39,12 +42,42 @@ playlist2.m3u8`
 
       expect(result.type).toBe('playlist')
       expect(result.data).toBeDefined()
+      expect(result.streamType).toBe('unknown')
     })
 
     it('should handle empty M3U8', () => {
       const content = '#EXTM3U'
 
       expect(() => parser.parse(content)).not.toThrow()
+    })
+
+    it('should classify live manifests', () => {
+      const content = `#EXTM3U
+#EXT-X-VERSION:3
+#EXT-X-TARGETDURATION:6
+#EXTINF:6.0,
+segment1.ts
+#EXTINF:6.0,
+segment2.ts`
+
+      const result = parser.parse(content)
+
+      expect(result.streamType).toBe('live')
+      expect(result.isLive).toBe(true)
+    })
+
+    it('should flag obvious ad manifests', () => {
+      const content = `#EXTM3U
+#EXT-X-TARGETDURATION:5
+#EXTINF:5.0,
+ad-segment-1.ts
+#EXTINF:5.0,
+ad-segment-2.ts`
+
+      const result = parser.parse(content, {}, 'https://ads.example.com/preroll-ad.m3u8')
+
+      expect(result.suspectedAd).toBe(true)
+      expect(result.adSignals).toContain('url-keyword')
     })
   })
 

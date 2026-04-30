@@ -6,6 +6,7 @@ import fsExtra from 'fs-extra'
 import Logger from 'electron-log'
 import type { DialogService } from '../service/dialog.service'
 import type { TaskItem } from '../common.types'
+import { m3u8Parser } from '../core/m3u8-parser.service'
 import { aria2Service } from '../service/aria2.service'
 import { getAppDataDir, timeFormat } from './utils'
 import { jsondb } from './jsondb'
@@ -405,6 +406,8 @@ export class M3u8Service extends EventEmitter {
             status: 'downloaded',
             duration,
             durationStr: timeFormat(duration),
+            isLive: result.isLive,
+            streamType: result.streamType,
             taskId,
             createdAt,
             directory: targetPath,
@@ -446,6 +449,8 @@ export class M3u8Service extends EventEmitter {
             status: 'downloaded',
             duration,
             durationStr: timeFormat(duration),
+            isLive: result.isLive,
+            streamType: result.streamType,
             taskId,
             createdAt,
             directory: targetPath,
@@ -571,23 +576,25 @@ export class M3u8Service extends EventEmitter {
    */
   analyzeM3u8File(targetPath: string, sampleFilename: string) {
     const str = fs.readFileSync(join(targetPath, sampleFilename), 'utf8')
-    const parser = new Parser()
-    parser.push(str)
-    // console.log(parser.manifest)
-    const { segments } = parser.manifest
-    let streamDuration = 0
-    streamDuration = segments.reduce((acc, cur) => {
-      return acc + cur.duration
-    }, 0)
-    console.log('streamDuration: ', streamDuration, timeFormat(streamDuration))
-    // console.log(parser)
+    const parsed = m3u8Parser.parse(str)
 
-    // playlist
-    if (parser.manifest.playlists && parser.manifest.playlists.length !== 0) {
-      console.log(parser.manifest.playlists)
-      return { type: 'playlist', data: parser.manifest.playlists, duration: streamDuration }
+    if (parsed.type === 'playlist') {
+      return {
+        type: 'playlist',
+        data: m3u8Parser.getPlaylists(parsed.data),
+        duration: parsed.duration,
+        isLive: parsed.isLive,
+        streamType: parsed.streamType,
+      }
     }
-    return { type: 'segments', data: segments, duration: streamDuration }
+
+    return {
+      type: 'segments',
+      data: m3u8Parser.getSegments(parsed.data),
+      duration: parsed.duration,
+      isLive: parsed.isLive,
+      streamType: parsed.streamType,
+    }
   }
 
   async downloadTS(task: TaskItem) {
