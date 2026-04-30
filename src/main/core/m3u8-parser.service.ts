@@ -144,12 +144,7 @@ export class M3U8ParserService {
   }
 
   private isLikelyAdvertisement(signals: string[]): boolean {
-    const keywordSignalCount = signals.filter(signal => signal.endsWith('keyword')).length
-
-    if (keywordSignalCount > 0)
-      return true
-
-    return signals.includes('short-vod') && signals.length > 1
+    return signals.some(signal => signal.endsWith('keyword'))
   }
 
   /**

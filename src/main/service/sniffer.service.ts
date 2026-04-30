@@ -57,6 +57,8 @@ export class Sniffer {
     try {
       const parsed = await this.inspectManifest(url, headers)
       if (!parsed || parsed.suspectedAd) {
+        if (parsed?.suspectedAd)
+          Logger.info('[Sniffer] Filtered suspected ad manifest:', { url, adSignals: parsed.adSignals })
         this.inspectedUrls.add(cacheKey)
         return
       }

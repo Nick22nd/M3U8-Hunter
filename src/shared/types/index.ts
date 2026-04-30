@@ -8,8 +8,6 @@ export * from './ipc.types'
 export * from './m3u8.types'
 export * from './error.types'
 
-export type M3U8StreamType = 'live' | 'vod' | 'unknown'
-
 // Re-export legacy types for backward compatibility
 export enum MessageName {
   getTasks,
