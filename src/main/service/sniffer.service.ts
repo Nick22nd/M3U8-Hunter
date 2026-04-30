@@ -85,8 +85,10 @@ export class Sniffer {
 
   private async inspectManifest(url: string, headers: Record<string, string>, depth = 0) {
     const content = await this.fetchManifest(url, headers)
-    if (!content.includes('#EXTM3U'))
+    if (!content.includes('#EXTM3U')) {
+      Logger.info('[Sniffer] Ignored non-m3u8 response while inspecting url:', url)
       return null
+    }
 
     const parsed = m3u8Parser.parse(content, {}, url)
     if (parsed.type === 'playlist' && depth < MAX_ANALYSIS_DEPTH) {

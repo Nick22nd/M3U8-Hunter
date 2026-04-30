@@ -5,6 +5,8 @@ import type { M3U8Manifest, M3U8Playlist, M3U8Segment, M3U8StreamType, ParsedM3U
 type ParserManifest = M3U8Manifest & Record<string, unknown>
 
 const AD_KEYWORD_PATTERN = /doubleclick|googlesyndication|googlead|adservice|advert(?:isement)?|commercial|promo|pre-roll|preroll|post-roll|postroll|mid-roll|midroll|bumper|vast|imasdk|ima/i
+const SHORT_VOD_AD_DURATION_THRESHOLD = 90
+const SHORT_VOD_AD_SEGMENT_THRESHOLD = 12
 
 /**
  * M3U8 Parser service
@@ -137,8 +139,12 @@ export class M3U8ParserService {
     if (AD_KEYWORD_PATTERN.test(manifestPreview))
       signals.add('manifest-keyword')
 
-    if (streamType === 'vod' && duration > 0 && duration <= 90 && this.getSegmentCount(manifest) <= 12)
+    if (streamType === 'vod'
+      && duration > 0
+      && duration <= SHORT_VOD_AD_DURATION_THRESHOLD
+      && this.getSegmentCount(manifest) <= SHORT_VOD_AD_SEGMENT_THRESHOLD) {
       signals.add('short-vod')
+    }
 
     return [...signals]
   }
