@@ -1,3 +1,5 @@
+export type M3U8StreamType = 'live' | 'vod' | 'unknown'
+
 export enum MessageName {
   getTasks,
   downloadM3u8,
@@ -43,6 +45,8 @@ export interface TaskItem {
   status: 'downloading' | 'downloaded' | 'failed' | 'paused' | 'success' | 'waiting' | 'unfinished'
   duration?: number
   durationStr?: string
+  streamType?: M3U8StreamType
+  isLive?: boolean
   name?: string
   from?: string
   taskId: string
@@ -68,6 +72,11 @@ export interface FindedResource {
     [key: string]: string
   }
   type: string
+  duration?: number
+  durationStr?: string
+  streamType?: M3U8StreamType
+  isLive?: boolean
+  segmentCount?: number
   name?: string
   title?: string
   from?: string
@@ -80,6 +89,11 @@ export interface MediaMessage {
       [key: string]: string
     }
     type: string
+    duration?: number
+    durationStr?: string
+    streamType?: M3U8StreamType
+    isLive?: boolean
+    segmentCount?: number
     url: string
     name?: string
     title?: string

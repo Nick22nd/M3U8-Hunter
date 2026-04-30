@@ -1,3 +1,5 @@
+import type { M3U8StreamType } from './m3u8.types'
+
 /**
  * Task status enumeration
  */
@@ -50,6 +52,8 @@ export interface TaskItem {
   status: TaskStatus
   duration?: number
   durationStr?: string
+  streamType?: M3U8StreamType
+  isLive?: boolean
   name?: string
   from?: string
   taskId: string
@@ -76,6 +80,8 @@ export interface TaskCreationOptions {
   from?: string
   og?: OGMetadata
   tags?: string[]
+  streamType?: M3U8StreamType
+  isLive?: boolean
   taskId?: string
   createdAt?: number
 }
@@ -91,5 +97,7 @@ export interface TaskUpdateOptions {
   directory?: string
   og?: OGMetadata
   tags?: string[]
+  streamType?: M3U8StreamType
+  isLive?: boolean
   folderConflict?: FolderConflict
 }

@@ -97,10 +97,6 @@ function updatePlayHistory(newUrl: string) {
   }
 }
 
-function onReady() {
-  console.log('QR onReady')
-}
-
 function urlChange() {
   if (dplayer.value) {
     dplayer.value.switchVideo({
@@ -138,17 +134,6 @@ function urlChange() {
         class="flex-1 px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400 dark:text-gray-100"
         @change="urlChange"
       >
-      <div class="relative group">
-        <button
-          type="button"
-          class="h-full px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-300 transition-colors"
-        >
-          QR
-        </button>
-        <div class="absolute right-0 top-full mt-1 hidden group-hover:block z-10 bg-white dark:bg-gray-900 rounded-xl shadow-xl p-2 border border-gray-200 dark:border-gray-700">
-          <VueQrcode :value="taskStore.playUrl || taskStore.urlPrefix" @ready="onReady" />
-        </div>
-      </div>
     </div>
 
     <div ref="videoDom" class="flex-1 min-h-0" />

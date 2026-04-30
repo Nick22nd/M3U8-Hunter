@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import { computed, watchEffect } from 'vue'
 import { useDark, useToggle } from '@vueuse/core'
-import { Film, Globe, Home, Info, ListChecks, Moon, Settings, Sun } from 'lucide-vue-next'
+import { Film, Globe, ListChecks, Moon, Sun } from 'lucide-vue-next'
 import { useRoute } from 'vue-router'
 import { useFindedMediaStore, useTaskStore } from '../stores'
 
@@ -8,12 +9,9 @@ const taskStore = useTaskStore()
 const mediaStore = useFindedMediaStore()
 
 const myRoutes = [
-  { path: '/', name: 'Home', icon: Home, desc: '封面与标签媒体库' },
-  { path: '/tasks', name: 'Tasks', icon: ListChecks, desc: '任务与下载状态' },
-  { path: '/player', name: 'Player', icon: Film, desc: '播放器与预览' },
-  { path: '/webview', name: 'Explore', icon: Globe, desc: '网页探测与抓流' },
-  { path: '/setting', name: 'Setting', icon: Settings, desc: '下载与 Aria2 配置' },
-  { path: '/about', name: 'About', icon: Info, desc: '关于' },
+  { path: '/', name: '发现', icon: Globe, desc: '网页探测与预解析' },
+  { path: '/tasks', name: '列表', icon: ListChecks, desc: '下载任务与播放入口' },
+  { path: '/player', name: '播放', icon: Film, desc: 'M3U8 播放器' },
 ]
 
 const route = useRoute()
@@ -45,7 +43,7 @@ watchEffect(() => {
             M3U8 Hunter
           </p>
           <p class="text-xs text-gray-400 dark:text-gray-500 m-0">
-            下载工作台
+            下载 / 播放 / 列表
           </p>
         </div>
       </div>
@@ -91,7 +89,7 @@ watchEffect(() => {
           class="ml-auto shrink-0 min-w-5 h-5 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center px-1"
         >{{ taskStore.tasksCount > 99 ? '99+' : taskStore.tasksCount }}</span>
         <span
-          v-else-if="item.path === '/webview' && mediaStore.findedMediaListCount > 0"
+          v-if="item.path === '/' && mediaStore.findedMediaListCount > 0"
           class="ml-auto shrink-0 min-w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center px-1"
         >{{ mediaStore.findedMediaListCount > 99 ? '99+' : mediaStore.findedMediaListCount }}</span>
       </router-link>

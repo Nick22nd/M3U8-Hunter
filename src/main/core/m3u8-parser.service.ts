@@ -1,6 +1,12 @@
 import { Parser } from 'm3u8-parser'
 import Logger from 'electron-log'
-import type { M3U8Manifest, M3U8Playlist, M3U8Segment, ParsedM3U8, ParsingOptions } from '../../shared/types'
+import type { M3U8Manifest, M3U8Playlist, M3U8Segment, M3U8StreamType, ParsedM3U8, ParsingOptions } from '../../shared/types'
+
+type ParserManifest = M3U8Manifest & Record<string, unknown>
+
+const AD_KEYWORD_PATTERN = /doubleclick|googlesyndication|googlead|adservice|advert(?:isement)?|commercial|promo|pre-roll|preroll|post-roll|postroll|mid-roll|midroll|bumper|vast|imasdk|ima/i
+const SHORT_VOD_AD_DURATION_THRESHOLD = 90
+const SHORT_VOD_AD_SEGMENT_THRESHOLD = 12
 
 /**
  * M3U8 Parser service
@@ -9,19 +15,35 @@ export class M3U8ParserService {
   /**
    * Parse M3U8 content
    */
-  parse(content: string, options: ParsingOptions = {}): ParsedM3U8 {
+  parse(content: string, options: ParsingOptions = {}, sourceUrl = ''): ParsedM3U8 {
     try {
       const parser = new Parser(options.strict ? { strictMode: true } : {})
       parser.push(content)
+      parser.end()
 
-      const manifest = parser.manifest
+      const manifest = parser.manifest as ParserManifest
       const duration = this.calculateDuration(manifest)
+      const segmentCount = this.getSegmentCount(manifest)
+      const streamType = this.getStreamType(manifest)
+      const adSignals = this.getAdSignals({
+        content,
+        duration,
+        manifest,
+        sourceUrl,
+        streamType,
+      })
+      const suspectedAd = this.isLikelyAdvertisement(adSignals)
 
       if (this.isPlaylist(manifest)) {
         return {
           type: 'playlist',
           data: manifest,
           duration,
+          segmentCount,
+          streamType,
+          isLive: streamType === 'live',
+          suspectedAd,
+          adSignals,
         }
       }
       else {
@@ -29,6 +51,11 @@ export class M3U8ParserService {
           type: 'segments',
           data: manifest,
           duration,
+          segmentCount,
+          streamType,
+          isLive: streamType === 'live',
+          suspectedAd,
+          adSignals,
         }
       }
     }
@@ -56,20 +83,74 @@ export class M3U8ParserService {
   /**
    * Check if manifest is a playlist (has sub-playlists) or segments
    */
-  private isPlaylist(manifest: any): boolean {
+  private isPlaylist(manifest: ParserManifest): boolean {
     return manifest.playlists && manifest.playlists.length > 0
   }
 
   /**
    * Calculate total duration from manifest
    */
-  private calculateDuration(manifest: any): number {
+  private calculateDuration(manifest: ParserManifest): number {
     if (manifest.segments && manifest.segments.length > 0) {
-      return manifest.segments.reduce((total: number, segment: any) => {
+      return manifest.segments.reduce((total: number, segment) => {
         return total + (segment.duration || 0)
       }, 0)
     }
     return 0
+  }
+
+  getStreamType(manifest: M3U8Manifest): M3U8StreamType {
+    const typedManifest = manifest as ParserManifest
+
+    if (this.getSegments(typedManifest).length === 0)
+      return 'unknown'
+
+    return typedManifest.endList === true ? 'vod' : 'live'
+  }
+
+  private getAdSignals(input: {
+    content: string
+    duration: number
+    manifest: ParserManifest
+    sourceUrl: string
+    streamType: M3U8StreamType
+  }): string[] {
+    const { content, duration, manifest, sourceUrl, streamType } = input
+    const signals = new Set<string>()
+    const firstSegmentUris = this.getSegments(manifest)
+      .slice(0, 6)
+      .map(segment => segment.uri)
+      .join(' ')
+    const firstPlaylistUris = this.getPlaylists(manifest)
+      .slice(0, 4)
+      .map(playlist => playlist.uri)
+      .join(' ')
+    const manifestPreview = content.slice(0, 4000)
+
+    if (AD_KEYWORD_PATTERN.test(sourceUrl))
+      signals.add('url-keyword')
+
+    if (AD_KEYWORD_PATTERN.test(firstSegmentUris))
+      signals.add('segment-keyword')
+
+    if (AD_KEYWORD_PATTERN.test(firstPlaylistUris))
+      signals.add('playlist-keyword')
+
+    if (AD_KEYWORD_PATTERN.test(manifestPreview))
+      signals.add('manifest-keyword')
+
+    if (streamType === 'vod'
+      && duration > 0
+      && duration <= SHORT_VOD_AD_DURATION_THRESHOLD
+      && this.getSegmentCount(manifest) <= SHORT_VOD_AD_SEGMENT_THRESHOLD) {
+      signals.add('short-vod')
+    }
+
+    return [...signals]
+  }
+
+  private isLikelyAdvertisement(signals: string[]): boolean {
+    return signals.some(signal => signal.endsWith('keyword'))
   }
 
   /**

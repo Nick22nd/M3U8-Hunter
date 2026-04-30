@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, toRaw } from 'vue'
+import { computed, ref, toRaw } from 'vue'
 import { AlertCircle, Check, FolderClosed, Link, Pause, Play, RefreshCw, Search, Trash, Youtube } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
 import type { Message4Renderer, TaskItem } from '../common.types'
@@ -67,7 +67,7 @@ const filteredTasksByStatus = computed(() => {
 
 const filterTableData = computed(() =>
   filteredTasksByStatus.value.filter(
-    (data) => {
+    (data: TaskItem) => {
       if (search.value && !!data.name) {
         return data.name.toLowerCase().includes(search.value.toLowerCase())
           || (data.from && data.from.toLocaleLowerCase().includes(search.value.toLowerCase()))
@@ -92,6 +92,14 @@ function getStatusColor(status: TaskItem['status']) {
   if (status === 'downloading')
     return 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-500'
   return 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
+}
+
+function getStreamLabel(task: TaskItem) {
+  if (task.streamType === 'live')
+    return '直播'
+  if (task.durationStr)
+    return `点播 · ${task.durationStr}`
+  return '点播'
 }
 
 function setStatusFilter(status: 'all' | TaskItem['status']) {
@@ -374,7 +382,7 @@ async function handleMigrate() {
         </div>
         <!-- Progress -->
         <div class="flex flex-col gap-0.5 min-w-0">
-          <span class="text-xs text-gray-500 dark:text-gray-400">{{ task.durationStr || '—' }}</span>
+          <span class="text-xs text-gray-500 dark:text-gray-400">{{ getStreamLabel(task) }}</span>
           <div v-if="task.progress && task.progress.includes('%')" class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1 my-0.5">
             <div class="h-1 rounded-full bg-blue-500 transition-all" :style="{ width: task.progress }" />
           </div>
@@ -391,6 +399,9 @@ async function handleMigrate() {
         <div class="flex flex-col min-w-0 overflow-hidden">
           <span class="text-sm truncate text-gray-800 dark:text-gray-200" :title="task.title || task.name">
             {{ task.title || task.name || '未命名任务' }}
+          </span>
+          <span v-if="task.segmentCount" class="text-[11px] text-gray-400">
+            {{ task.segmentCount }} 片段
           </span>
           <span class="text-xs truncate text-gray-400" :title="task.from || task.url">
             {{ task.from || task.url }}

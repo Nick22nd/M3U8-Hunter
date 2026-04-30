@@ -38,6 +38,14 @@ function getOgData(): OGMetadata {
   }
 }
 
+function getStreamLabel() {
+  if (props.task.browserVideoItem.streamType === 'live')
+    return '直播流'
+  if (props.task.browserVideoItem.durationStr)
+    return `点播 · ${props.task.browserVideoItem.durationStr}`
+  return '点播流'
+}
+
 async function handleConfirm() {
   if (!taskName.value.trim()) {
     toast.warning('请输入任务名称')
@@ -56,6 +64,10 @@ async function handleConfirm() {
       url: props.task.browserVideoItem.url,
       headers: props.task.browserVideoItem.headers,
       type: props.task.browserVideoItem.type,
+      duration: props.task.browserVideoItem.duration,
+      durationStr: props.task.browserVideoItem.durationStr,
+      isLive: props.task.browserVideoItem.isLive,
+      streamType: props.task.browserVideoItem.streamType,
       og: getOgData(),
       tags: props.task.browserVideoItem.tags || [],
     }
@@ -88,12 +100,13 @@ function handleCancel() {
       <h3 class="text-base font-semibold mb-4 text-gray-800 dark:text-gray-100">
         创建下载任务
       </h3>
-      <div v-if="props.task.browserVideoItem.og?.image" class="mb-4 overflow-hidden rounded-2xl border border-gray-100 dark:border-gray-800">
-        <img
-          :src="props.task.browserVideoItem.og.image"
-          :alt="props.task.browserVideoItem.og.title || props.pageTitle"
-          class="h-40 w-full object-cover"
-        >
+      <div class="mb-4 flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+        <span class="rounded-full bg-blue-50 px-2.5 py-1 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300">
+          {{ getStreamLabel() }}
+        </span>
+        <span v-if="props.task.browserVideoItem.segmentCount" class="rounded-full bg-gray-100 px-2.5 py-1 dark:bg-gray-800">
+          {{ props.task.browserVideoItem.segmentCount }} 片段
+        </span>
       </div>
       <label class="text-sm text-gray-500 dark:text-gray-400 mb-1 block">任务名称</label>
       <input
@@ -104,14 +117,8 @@ function handleCancel() {
         class="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400 mb-6"
         @keydown.enter="handleConfirm"
       >
-      <div v-if="props.task.browserVideoItem.tags?.length" class="mb-6 flex flex-wrap gap-2">
-        <span
-          v-for="tag in props.task.browserVideoItem.tags"
-          :key="tag"
-          class="rounded-full bg-blue-50 px-2.5 py-1 text-xs text-blue-600 dark:bg-blue-900/30 dark:text-blue-300"
-        >
-          #{{ tag }}
-        </span>
+      <div class="mb-6 rounded-xl bg-gray-50 px-3 py-2 text-xs text-gray-500 dark:bg-gray-800/80 dark:text-gray-400">
+        {{ props.task.browserVideoItem.url }}
       </div>
       <div class="flex justify-end gap-3">
         <button
